@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>ملفي الشخصي - نظام المخزون</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+      <link rel="stylesheet" href="css/chat-widget.css">
+       <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background: #f0f9f0;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+        
+        /* للشاشات الكبيرة (كمبيوتر) */
+        @media (min-width: 769px) {
+            .sidebar { 
+                position: fixed; 
+                right: 0; 
+                top: 0; 
+                width: 260px; 
+                height: 100%; 
+                   background: linear-gradient(180deg, #0f2c3f 0%, #1e4a6b 100%);
+                color: white; 
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                overflow-y: auto;
+            }
+            .main-content { 
+                margin-right: 260px; 
+                padding: 20px; 
+            }
+            .mobile-menu-btn {
+                display: none;
+            }
+        }
+        
+        /* للشاشات المتوسطة والصغيرة (موبايل) */
+        @media (max-width: 768px) {
+            .sidebar { 
+                position: fixed;
+                top: 0;
+                right: -280px;
+                width: 260px;
+                height: 100%;
+                   background: linear-gradient(180deg, #0f2c3f 0%, #1e4a6b 100%);
+                color: white;
+                z-index: 1000;
+                transition: right 0.3s ease;
+                padding: 20px 15px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.2);
+                overflow-y: auto;
+            }
+            .sidebar.open {
+                right: 0;
+            }
+            .main-content { 
+                margin-right: 0; 
+                padding: 70px 15px 15px 15px; 
+                width: 100%;
+            }
+            .mobile-menu-btn {
+                display: block;
+                position: fixed;
+                top: 15px;
+                right: 15px;
+                z-index: 1001;
+                   background: linear-gradient(180deg, #0f2c3f 0%, #1e4a6b 100%);
+                color: white;
+                border: none;
+                border-radius: 8px;
+                padding: 10px 15px;
+                font-size: 20px;
+                cursor: pointer;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            }
+            .overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 999;
+                display: none;
+            }
+            .overlay.open {
+                display: block;
+            }
+        }
+        
+        /* تنسيق القائمة الجانبية */
+        .sidebar a {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            color: rgba(255,255,255,0.9);
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+        
+        .sidebar a:hover {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+        
+        .sidebar a.active {
+            background: rgba(255,255,255,0.3);
+            color: white;
+        }
+        
+        .sidebar button {
+            width: 100%;
+            text-align: right;
+            padding: 12px 16px;
+            border-radius: 8px;
+            color: rgba(255,255,255,0.9);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+        }
+        
+        .sidebar button:hover {
+            background: #dc2626;
+            color: white;
+        }
+        
+        .profile-section {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            margin-bottom: 20px;
+        }
+        
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            margin: 0 auto 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            font-weight: bold;
+            border: 3px solid white;
+        }
+        
+        /* بطاقة الملف الشخصي */
+        .profile-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .avatar-large {
+            width: 120px;
+            height: 120px;
+               background: linear-gradient(180deg, #0f2c3f 0%, #1e4a6b 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            font-weight: bold;
+            color: white;
+            margin: 0 auto 20px;
+            border: 4px solid #48bb78;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .info-label {
+            font-weight: 600;
+            color: #4a5568;
+        }
+        
+        .info-value {
+            color: #2d3748;
+        }
+        
+        .edit-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        
+        .edit-input:focus {
+            background: linear-gradient(180deg, #0f2c3f 0%, #1e4a6b 100%);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(72, 187, 120, 0.2);
+        }
+        
+        .save-btn {
+         background: linear-gradient(180deg, #0f2c3f 0%, #1e4a6b 100%);
+            color: white;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .save-btn:hover {
+            background: linear-gradient(180deg, #0f2c3f 0%, #1e4a6b 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(47, 133, 90, 0.3);
+        }
+        
+        .cancel-btn {
+            background: #e2e8f0;
+            color: #4a5568;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .cancel-btn:hover {
+            background: #cbd5e0;
+        }
+        
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            display: inline-block;
+        }
+        
+        .status-active {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        
+        .status-inactive {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+        
+        .status-pending {
+            background: #fefcbf;
+            color: #97520f;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Overlay للقائمة الجانبية في الموبايل -->
+    <div id="overlay" class="overlay" onclick="closeSidebar()"></div>
+    
+    <!-- زر القائمة للجوال -->
+    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+
+    <!-- القائمة الجانبية -->
+    <div id="sidebar" class="sidebar">
+        <div class="profile-section">
+            <div class="profile-avatar" id="profileInitial">👤</div>
+            <div id="profileName" class="font-bold text-lg">جاري التحميل...</div>
+            <div id="profileRole" class="text-sm text-white/80 mt-1">مستخدم </div>
+        </div>
+        
+        <nav>
+           
+            <a href="user-dashboard.html">
+                <i class="fas fa-home ml-2"></i>
+                <span>الرئيسية</span>
+            </a>
+            <a href="user-inventory.html">
+                <i class="fa-solid fa-warehouse"></i>
+            
+                <span>المخزون</span>
+            </a>
+             <a  id="requestsLinkContainer" href="Request.html" >
+                <i class="fas fa-clipboard-list ml-2"></i>
+                <span>جدول الطلبات</span>
+            </a>
+             <a  id="requestsLinkContainer" href="stock-recovery.html" >
+                <i class="fas fa-clipboard-list ml-2"></i>
+                <span> استعادة المخزون</span>
+            </a>
+            <a href="user-profile.html" class="active">
+                <i class="fas fa-user ml-2"></i>
+                <span>الملف الشخصي</span>
+            </a>
+            
+            <button onclick="logout()">
+                <i class="fas fa-sign-out-alt ml-2"></i>
+                <span>تسجيل خروج</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- المحتوى الرئيسي -->
+    <div class="main-content" id="mainContent">
+        <!-- عنوان الصفحة -->
+        <div class="mb-6">
+            <h1 class="text-2xl md:text-3xl font-bold">👤 ملفي الشخصي</h1>
+            <p class="text-gray-600 text-sm md:text-base">عرض وتعديل معلومات حسابك الشخصي</p>
+        </div>
+
+        <!-- رسائل -->
+        <div id="errorMessage" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4 hidden"></div>
+        <div id="successMessage" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-4 hidden"></div>
+
+        <!-- محتوى الملف الشخصي -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- بطاقة الصورة والمعلومات الأساسية -->
+            <div class="lg:col-span-1">
+                <div class="profile-card text-center">
+                    <div class="avatar-large" id="profileAvatar">👤</div>
+                    
+                    <h2 class="text-2xl font-bold text-gray-800" id="displayFullName">-</h2>
+                    <p class="text-gray-600 mb-3" id="displayUsername">@-</p>
+                    
+                    <div class="flex justify-center mb-4">
+                        <span class="status-badge" id="displayStatus">نشط</span>
+                    </div>
+                    
+                    <div class="text-sm text-gray-500">
+                        <div>عضو منذ: <span id="displayMemberSince">-</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- بطاقة المعلومات التفصيلية -->
+            <div class="lg:col-span-2">
+                <div class="profile-card">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold">معلومات الحساب</h3>
+                        <button id="editBtn" onclick="enableEditMode()" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700">
+                            ✏️ تعديل
+                        </button>
+                    </div>
+                    
+                    <!-- وضع العرض -->
+                    <div id="viewMode">
+                        <div class="info-row">
+                            <span class="info-label">البريد الإلكتروني:</span>
+                            <span class="info-value" id="viewEmail">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">اسم المستخدم:</span>
+                            <span class="info-value" id="viewUsername">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">الاسم الكامل:</span>
+                            <span class="info-value" id="viewFullName">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">القسم:</span>
+                            <span class="info-value" id="viewDepartment">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">الدور:</span>
+                            <span class="info-value" id="viewRole">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">آخر تحديث:</span>
+                            <span class="info-value" id="viewUpdatedAt">-</span>
+                        </div>
+                    </div>
+                    
+                    <!-- وضع التعديل -->
+                    <div id="editMode" class="hidden">
+                        <form id="profileForm">
+                            <div class="mb-4">
+                                <label class="block text-gray-700 mb-2">البريد الإلكتروني</label>
+                                <input type="email" id="editEmail" class="edit-input bg-gray-100" readonly>
+                                <p class="text-xs text-gray-500 mt-1">لا يمكن تعديل البريد الإلكتروني</p>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="block text-gray-700 mb-2">اسم المستخدم</label>
+                                <input type="text" id="editUsername" class="edit-input" required>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="block text-gray-700 mb-2">الاسم الكامل</label>
+                                <input type="text" id="editFullName" class="edit-input" required>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="block text-gray-700 mb-2">القسم</label>
+                                <input type="text" id="editDepartment" class="edit-input" placeholder="مثال: هندسة، مبيعات...">
+                            </div>
+                            
+                            <div class="flex gap-3 mt-6">
+                                <button type="submit" class="save-btn flex-1">💾 حفظ التغييرات</button>
+                                <button type="button" onclick="disableEditMode()" class="cancel-btn flex-1">❌ إلغاء</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- قسم تغيير كلمة المرور -->
+                <div class="profile-card mt-6">
+                    <h3 class="text-xl font-bold mb-4">🔐 تغيير كلمة المرور</h3>
+                    <p class="text-sm text-gray-600 mb-4">سيتم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني</p>
+                    <button onclick="resetPassword()" class="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors">
+                        إرسال رابط إعادة التعيين
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase.js"></script>
+
+    <script>
+        const supabaseClient = window.AppSupabase || window.supabase;
+        let currentUser = null;
+        let currentUserData = null;
+        
+        // دوال القائمة الجانبية للجوال
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('overlay').classList.toggle('open');
+              // تأكد من ظهور/اختفاء الرابط حسب دور المستخدم
+            checkUserRole();
+        }
+        
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.remove('open');
+            document.getElementById('overlay').classList.remove('open');
+        }
+
+        // تحميل بيانات المستخدم
+        async function loadUserProfile() {
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (!user) {
+                    window.location.href = 'user-login.html';
+                    return;
+                }
+
+                const { data: userData, error } = await supabaseClient
+                    .from('users')
+                    .select('*')
+                    .eq('id', user.id)
+                    .single();
+
+                if (error) throw error;
+
+                if (userData) {
+                    currentUserData = userData;
+                    
+                    // تحديث القائمة الجانبية
+                    const displayName = userData.full_name || userData.username;
+                    document.getElementById('profileName').textContent = displayName;
+                    document.getElementById('profileInitial').textContent = displayName.charAt(0);
+                    
+                    // تحديث صفحة البروفايل
+                    updateProfileDisplay(userData);
+                    
+                    // غلق القائمة الجانبية في الموبايل
+                    closeSidebar();
+                }
+
+            } catch (error) {
+                console.error('خطأ في تحميل الملف الشخصي:', error);
+                showError('حدث خطأ في تحميل البيانات');
+            }
+        }
+
+        // تحديث عرض البروفايل
+        function updateProfileDisplay(userData) {
+            const displayName = userData.full_name || userData.username;
+            
+            // الصورة الرمزية
+            document.getElementById('profileAvatar').textContent = displayName.charAt(0);
+            
+            // العرض الرئيسي
+            document.getElementById('displayFullName').textContent = userData.full_name || '-';
+            document.getElementById('displayUsername').textContent = `@${userData.username || '-'}`;
+            
+            // الحالة
+            const statusSpan = document.getElementById('displayStatus');
+            if (userData.status === 'active') {
+                statusSpan.textContent = 'نشط';
+                statusSpan.className = 'status-badge status-active';
+            } else if (userData.status === 'inactive') {
+                statusSpan.textContent = 'غير نشط';
+                statusSpan.className = 'status-badge status-inactive';
+            } else if (userData.status === 'pending') {
+                statusSpan.textContent = 'قيد الانتظار';
+                statusSpan.className = 'status-badge status-pending';
+            } else {
+                statusSpan.textContent = userData.status || '-';
+            }
+            
+            // تاريخ العضوية
+            if (userData.created_at) {
+                const date = new Date(userData.created_at).toLocaleDateString('ar-EG', {
+                    year: 'numeric', month: 'long', day: 'numeric'
+                });
+                document.getElementById('displayMemberSince').textContent = date;
+            }
+            
+            // معلومات الحساب
+            document.getElementById('viewEmail').textContent = userData.email || '-';
+            document.getElementById('viewUsername').textContent = userData.username || '-';
+            document.getElementById('viewFullName').textContent = userData.full_name || '-';
+            document.getElementById('viewDepartment').textContent = userData.department || 'غير محدد';
+            
+            // الدور
+            const roleText = {
+                'admin': 'مدير',
+                'manager': 'مدير قسم',
+                'engineer': 'مهندس',
+                'viewer': 'مشاهد',
+                'other': 'أخرى'
+            }[userData.role] || userData.role;
+            document.getElementById('viewRole').textContent = roleText;
+            
+            // آخر تحديث
+            if (userData.updated_at) {
+                const updated = new Date(userData.updated_at).toLocaleDateString('ar-EG', {
+                    year: 'numeric', month: 'long', day: 'numeric'
+                });
+                document.getElementById('viewUpdatedAt').textContent = updated;
+            } else {
+                document.getElementById('viewUpdatedAt').textContent = '-';
+            }
+            
+            // تعبئة حقول التعديل
+            document.getElementById('editEmail').value = userData.email || '';
+            document.getElementById('editUsername').value = userData.username || '';
+            document.getElementById('editFullName').value = userData.full_name || '';
+            document.getElementById('editDepartment').value = userData.department || '';
+        }
+
+        // تفعيل وضع التعديل
+        function enableEditMode() {
+            document.getElementById('viewMode').classList.add('hidden');
+            document.getElementById('editMode').classList.remove('hidden');
+            document.getElementById('editBtn').classList.add('hidden');
+        }
+
+        // إلغاء وضع التعديل
+        function disableEditMode() {
+            document.getElementById('viewMode').classList.remove('hidden');
+            document.getElementById('editMode').classList.add('hidden');
+            document.getElementById('editBtn').classList.remove('hidden');
+        }
+
+        // حفظ التغييرات
+        document.getElementById('profileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'جاري الحفظ...';
+
+            try {
+                const updates = {
+                    username: document.getElementById('editUsername').value,
+                    full_name: document.getElementById('editFullName').value,
+                    department: document.getElementById('editDepartment').value || null,
+                    updated_at: new Date()
+                };
+
+                const { error } = await supabaseClient
+                    .from('users')
+                    .update(updates)
+                    .eq('id', currentUserData.id);
+
+                if (error) throw error;
+
+                showSuccess('✅ تم حفظ التغييرات بنجاح');
+                
+                // إعادة تحميل البيانات
+                await loadUserProfile();
+                disableEditMode();
+
+            } catch (error) {
+                console.error('خطأ في الحفظ:', error);
+                showError('حدث خطأ في حفظ التغييرات: ' + error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '💾 حفظ التغييرات';
+            }
+        });
+
+        // دالة إعادة تعيين كلمة السر
+        async function resetPassword() {
+    const resetUrl = window.location.origin + '/reset-password';
+    
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(
+        currentUserData.email, 
+        { redirectTo: resetUrl }
+    );
+
+    if (error) {
+        console.error('خطأ:', error);
+    } else {
+        alert('✅ تم إرسال رابط إعادة التعيين');
+    }
+}
+
+        // دوال المساعدة
+        function showError(msg) {
+            const div = document.getElementById('errorMessage');
+            div.textContent = msg;
+            div.classList.remove('hidden');
+            setTimeout(() => div.classList.add('hidden'), 3000);
+        }
+
+        function showSuccess(msg) {
+            const div = document.getElementById('successMessage');
+            div.textContent = msg;
+            div.classList.remove('hidden');
+            setTimeout(() => div.classList.add('hidden'), 3000);
+        }
+
+        // تسجيل الخروج
+        async function logout() {
+            await supabaseClient.auth.signOut();
+            localStorage.removeItem('currentUser');
+            window.location.href="gateway.html?to=user-dashboard";
+        }
+
+        // بدء التشغيل
+        document.addEventListener('DOMContentLoaded', loadUserProfile);
+    </script>
+    <script>
+function navigateTo(pageCode) {
+    window.location.href = 'gateway.html?to=' + pageCode;
+}
+ // أضف هذه الدالة للتحقق من دور المستخدم
+
+async function checkUserRole() {
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return false;
+
+        const { data: userData, error } = await supabaseClient
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+
+        if (error || !userData) return false;
+
+        // إذا كان المستخدم مشاهد (viewer)، أخفي رابط جدول الطلبات
+        if (userData.role === 'viewer') {
+            document.getElementById('requestsLinkContainer').style.display = 'none';
+        } else {
+            document.getElementById('requestsLinkContainer').style.display = 'block';
+        }
+
+        return true;
+    } catch (error) {
+        console.error('خطأ في التحقق من دور المستخدم:', error);
+        return false;
+    }
+}
+
+// استدعِ هذه الدالة بعد تسجيل الدخول أو تحميل الصفحة
+document.addEventListener('DOMContentLoaded', async () => {
+    await checkUserRole();
+    // باقي الكود...
+});
+</script>
+<script src="js/chat-widget.js"></script>
+</body>
+</html>

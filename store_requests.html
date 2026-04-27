@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام إدارة إذن الصرف من المخزن</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+        * { font-family: 'Cairo', sans-serif; }
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-manager_approved { background: #dbeafe; color: #1e40af; }
+        .status-issued { background: #d1fae5; color: #065f46; }
+        .status-rejected { background: #fee2e2; color: #991b1b; }
+        .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; }
+        .action-btn { transition: all 0.2s; cursor: pointer; }
+        .action-btn:hover { transform: translateY(-2px); }
+        .table-wrapper { overflow-x: auto; }
+        .data-table { min-width: 1000px; }
+        .data-table th, .data-table td { padding: 12px; text-align: center; border-bottom: 1px solid #e2e8f0; }
+        .data-table th { background: #f1f5f9; font-weight: 700; }
+        .data-table tr:hover { background: #f8fafc; cursor: pointer; }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div class="container mx-auto px-4 py-6">
+        <!-- الهيدر -->
+        <div class="bg-white rounded-2xl shadow-md p-5 mb-6">
+            <div class="flex justify-between items-center flex-wrap gap-4">
+                <div>
+                    <h1 class="text-2xl font-bold text-blue-800">
+                        <i class="fas fa-warehouse ml-2"></i>
+                        نظام إدارة إذن الصرف من المخزن
+                    </h1>
+                    <p class="text-gray-500 text-sm mt-1">إدارة طلبات الصرف - الموافقات - الطباعة</p>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="openNewRequestForm()" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-xl flex items-center gap-2">
+                        <i class="fas fa-plus"></i> طلب صرف جديد
+                    </button>
+                    <button onclick="refreshData()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-xl flex items-center gap-2">
+                        <i class="fas fa-sync-alt"></i> تحديث
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- إحصائيات سريعة -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white rounded-xl shadow-md p-4 border-r-4 border-yellow-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-gray-500 text-sm">تحت الطلب</p>
+                        <p class="text-2xl font-bold" id="pendingCount">0</p>
+                    </div>
+                    <i class="fas fa-clock text-yellow-500 text-3xl"></i>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-md p-4 border-r-4 border-blue-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-gray-500 text-sm">موافقة مدير</p>
+                        <p class="text-2xl font-bold" id="managerApprovedCount">0</p>
+                    </div>
+                    <i class="fas fa-check-circle text-blue-500 text-3xl"></i>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-md p-4 border-r-4 border-green-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-gray-500 text-sm">تم الصرف</p>
+                        <p class="text-2xl font-bold" id="issuedCount">0</p>
+                    </div>
+                    <i class="fas fa-truck text-green-500 text-3xl"></i>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-md p-4 border-r-4 border-purple-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-gray-500 text-sm">إجمالي الطلبات</p>
+                        <p class="text-2xl font-bold" id="totalCount">0</p>
+                    </div>
+                    <i class="fas fa-chart-line text-purple-500 text-3xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- فلتر وبحث -->
+        <div class="bg-white rounded-xl shadow-md p-4 mb-6">
+            <div class="flex flex-wrap gap-4 items-center">
+                <div class="flex-1 min-w-[200px]">
+                    <input type="text" id="searchInput" placeholder="🔍 بحث برقم الطلب، الصنف، أو مقدم الطلب..." class="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:border-blue-500">
+                </div>
+                <div class="w-48">
+                    <select id="statusFilter" class="w-full p-3 border border-gray-300 rounded-xl bg-white">
+                        <option value="all">جميع الحالات</option>
+                        <option value="pending">🟡 تحت الطلب</option>
+                        <option value="manager_approved">🔵 موافقة مدير</option>
+                        <option value="issued">🟢 تم الصرف</option>
+                        <option value="rejected">🔴 مرفوض</option>
+                    </select>
+                </div>
+                <div class="w-48">
+                    <select id="departmentFilter" class="w-full p-3 border border-gray-300 rounded-xl bg-white">
+                        <option value="all">جميع الإدارات</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- جدول الطلبات -->
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="table-wrapper">
+                <table class="data-table w-full">
+                    <thead>
+                        <tr>
+                            <th># مسلسل</th>
+                            <th>التاريخ</th>
+                            <th>جهة الطلب</th>
+                            <th>الصنف</th>
+                            <th>كود الصنف</th>
+                            <th>الكمية</th>
+                            <th>مقدم الطلب</th>
+                            <th>الحالة</th>
+                            <th>العمليات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="requestsTableBody">
+                        <tr>
+                            <td colspan="9" class="text-center py-8 text-gray-500">
+                                <i class="fas fa-spinner fa-spin ml-2"></i> جاري تحميل البيانات...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <!-- Pagination -->
+            <div class="flex justify-between items-center p-4 border-t" id="pagination">
+                <!-- هتتحمل ديناميكيا -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal إضافة/تعديل الطلب -->
+    <div id="requestModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-white border-b p-4 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-blue-800" id="modalTitle">
+                    <i class="fas fa-plus ml-2"></i> طلب صرف جديد
+                </h2>
+                <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <div class="p-6">
+                <form id="requestForm" onsubmit="saveRequest(event)">
+                    <input type="hidden" id="requestId">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-bold mb-1">رقم المسلسل <span class="text-red-500">*</span></label>
+                            <input type="text" id="requestNumber" class="w-full p-3 border rounded-xl bg-gray-50" placeholder="يتولد تلقائياً" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold mb-1">تاريخ الطلب <span class="text-red-500">*</span></label>
+                            <input type="date" id="requestDate" class="w-full p-3 border rounded-xl" required>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-bold mb-1">جهة الطلب <span class="text-red-500">*</span></label>
+                            <select id="requestingDepartment" class="w-full p-3 border rounded-xl" required>
+                                <option value="">-- اختر جهة الطلب --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold mb-1">الأسباب / الغرض</label>
+                            <input type="text" id="reason" class="w-full p-3 border rounded-xl" placeholder="مثال: تشغيل خط إنتاج، صيانة...">
+                        </div>
+                    </div>
+
+                    <div class="border-t pt-4 mt-2 mb-4">
+                        <h3 class="font-bold text-gray-700 mb-3"><i class="fas fa-box ml-2"></i> بيانات الصنف المطلوب</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-bold mb-1">كود الصنف <span class="text-red-500">*</span></label>
+                                <select id="itemCode" class="w-full p-3 border rounded-xl" onchange="updateItemInfo()" required>
+                                    <option value="">-- اختر الكود --</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold mb-1">اسم الصنف</label>
+                                <input type="text" id="itemName" class="w-full p-3 border rounded-xl bg-gray-50" readonly>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-bold mb-1">الوحدة</label>
+                                <input type="text" id="unit" class="w-full p-3 border rounded-xl bg-gray-50" readonly>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold mb-1">الكمية المطلوبة <span class="text-red-500">*</span></label>
+                                <input type="number" id="quantity" step="any" class="w-full p-3 border rounded-xl" placeholder="0.00" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-1">ملاحظات</label>
+                        <textarea id="notes" rows="2" class="w-full p-3 border rounded-xl" placeholder="أي ملاحظات إضافية..."></textarea>
+                    </div>
+
+                    <div class="border-t pt-4 mt-2 mb-4">
+                        <h3 class="font-bold text-gray-700 mb-3"><i class="fas fa-user ml-2"></i> بيانات طالب الصرف</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-bold mb-1">الاسم <span class="text-red-500">*</span></label>
+                                <input type="text" id="requesterName" class="w-full p-3 border rounded-xl" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold mb-1">التوقيع</label>
+                                <input type="text" id="requesterSignature" class="w-full p-3 border rounded-xl" placeholder="توقيع أو إمضاء">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-t pt-4 mt-2 mb-4">
+                        <h3 class="font-bold text-gray-700 mb-3"><i class="fas fa-user-tie ml-2"></i> موافقة مدير الإدارة</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-bold mb-1">اسم المدير</label>
+                                <input type="text" id="managerName" class="w-full p-3 border rounded-xl">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold mb-1">التوقيع</label>
+                                <input type="text" id="managerSignature" class="w-full p-3 border rounded-xl" placeholder="توقيع المدير">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold mb-1">تاريخ الموافقة</label>
+                                <input type="date" id="managerApprovalDate" class="w-full p-3 border rounded-xl">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-t pt-4 mt-2 mb-4">
+                        <h3 class="font-bold text-gray-700 mb-3"><i class="fas fa-hospital-user ml-2"></i> الجهة الطبية (إن وجد)</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-bold mb-1">الاسم</label>
+                                <input type="text" id="medicalDirectorName" class="w-full p-3 border rounded-xl">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold mb-1">التوقيع</label>
+                                <input type="text" id="medicalDirectorSignature" class="w-full p-3 border rounded-xl">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-t pt-4 mt-2 mb-4">
+                        <label class="block text-sm font-bold mb-1">حالة الطلب</label>
+                        <select id="status" class="w-full p-3 border rounded-xl">
+                            <option value="pending">🟡 تحت الطلب</option>
+                            <option value="manager_approved">🔵 موافقة مدير الإدارة</option>
+                            <option value="issued">🟢 تم الصرف من المخزن</option>
+                            <option value="rejected">🔴 مرفوض</option>
+                        </select>
+                    </div>
+
+                    <div class="flex gap-3 mt-6">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl flex-1">
+                            <i class="fas fa-save ml-2"></i> حفظ الطلب
+                        </button>
+                        <button type="button" onclick="closeModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-3 rounded-xl">
+                            إلغاء
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // بيانات تجريبية - هتتصل بقاعدة البيانات بعد كده
+        let requests = [];
+        let nextId = 1;
+        
+        // بيانات الأصناف (من نظام الترميز)
+        const itemsList = [
+            { code: 'RAW-001', name_ar: 'خام بروبيلين جليكول', unit: 'كجم', category: 'مواد خام' },
+            { code: 'RAW-002', name_ar: 'خام جلسرين نباتي', unit: 'لتر', category: 'مواد خام' },
+            { code: 'MED-001', name_ar: 'قفازات طبية معقمة', unit: 'زوج', category: 'مستلزمات طبية' },
+            { code: 'MED-002', name_ar: 'كمامات N95', unit: 'قطعة', category: 'مستلزمات طبية' },
+            { code: 'PKG-001', name_ar: 'عبوات بلاستيك 500مل', unit: 'قطعة', category: 'مواد تعبئة' },
+            { code: 'PKG-002', name_ar: 'كرتون تغليف مقوى', unit: 'قطعة', category: 'مواد تعبئة' }
+        ];
+        
+        // بيانات الأقسام
+        const departmentsList = [
+            { id: 1, name_ar: 'مستودع المواد الخام' },
+            { id: 2, name_ar: 'مستودع المستلزمات الطبية' },
+            { id: 3, name_ar: 'مستودع البضاعة التامة' },
+            { id: 4, name_ar: 'وحدة التوزيع' }
+        ];
+        
+        // تحميل البيانات من localStorage
+        function loadDataFromStorage() {
+            const saved = localStorage.getItem('store_requests');
+            if (saved) {
+                requests = JSON.parse(saved);
+                nextId = Math.max(...requests.map(r => r.id), 0) + 1;
+            } else {
+                // بيانات تجريبية
+                requests = [
+                    {
+                        id: 1, request_number: 'REQ-2026-0001', request_date: '2026-04-01',
+                        requesting_department: 'وحدة التوزيع', reason: 'توزيع يومي',
+                        item_code: 'MED-001', item_name: 'قفازات طبية معقمة', unit: 'زوج', quantity: 100, notes: '',
+                        requester_name: 'أحمد محمد', requester_signature: 'أ.م',
+                        manager_name: 'خالد علي', manager_signature: 'خ.ع', manager_approval_date: '2026-04-02',
+                        medical_director_name: '', medical_director_signature: '',
+                        status: 'manager_approved', created_at: '2026-04-01'
+                    },
+                    {
+                        id: 2, request_number: 'REQ-2026-0002', request_date: '2026-04-02',
+                        requesting_department: 'مستودع المواد الخام', reason: 'تشغيل خط إنتاج',
+                        item_code: 'RAW-001', item_name: 'خام بروبيلين جليكول', unit: 'كجم', quantity: 500, notes: 'للخط الأول',
+                        requester_name: 'سعيد إبراهيم', requester_signature: 'س.إ',
+                        manager_name: '', manager_signature: '', manager_approval_date: '',
+                        medical_director_name: '', medical_director_signature: '',
+                        status: 'pending', created_at: '2026-04-02'
+                    },
+                    {
+                        id: 3, request_number: 'REQ-2026-0003', request_date: '2026-04-03',
+                        requesting_department: 'مستودع البضاعة التامة', reason: 'تجهيز طلبات عملاء',
+                        item_code: 'PKG-001', item_name: 'عبوات بلاستيك 500مل', unit: 'قطعة', quantity: 2000, notes: '',
+                        requester_name: 'محمود حسن', requester_signature: 'م.ح',
+                        manager_name: 'خالد علي', manager_signature: 'خ.ع', manager_approval_date: '2026-04-03',
+                        medical_director_name: '', medical_director_signature: '',
+                        status: 'issued', created_at: '2026-04-03'
+                    }
+                ];
+                nextId = 4;
+                saveToStorage();
+            }
+        }
+        
+        function saveToStorage() {
+            localStorage.setItem('store_requests', JSON.stringify(requests));
+        }
+        
+        // عرض الحالة
+        function getStatusBadge(status) {
+            const statusMap = {
+                'pending': { class: 'status-pending', text: '🟡 تحت الطلب' },
+                'manager_approved': { class: 'status-manager_approved', text: '🔵 موافقة مدير' },
+                'issued': { class: 'status-issued', text: '🟢 تم الصرف' },
+                'rejected': { class: 'status-rejected', text: '🔴 مرفوض' }
+            };
+            const s = statusMap[status] || statusMap['pending'];
+            return `<span class="status-badge ${s.class}">${s.text}</span>`;
+        }
+        
+        // عرض الجدول
+        let currentPage = 1;
+        let rowsPerPage = 10;
+        let filteredRequests = [];
+        
+        function applyFilters() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const status = document.getElementById('statusFilter').value;
+            const dept = document.getElementById('departmentFilter').value;
+            
+            filteredRequests = requests.filter(req => {
+                let match = true;
+                if (search) {
+                    match = req.request_number.toLowerCase().includes(search) ||
+                            req.item_name.toLowerCase().includes(search) ||
+                            req.requester_name.toLowerCase().includes(search);
+                }
+                if (match && status !== 'all') match = req.status === status;
+                if (match && dept !== 'all') match = req.requesting_department === dept;
+                return match;
+            });
+            
+            // ترتيب تنازلي
+            filteredRequests.sort((a, b) => b.id - a.id);
+            currentPage = 1;
+            renderTable();
+        }
+        
+        function renderTable() {
+            const start = (currentPage - 1) * rowsPerPage;
+            const end = start + rowsPerPage;
+            const pageData = filteredRequests.slice(start, end);
+            const tbody = document.getElementById('requestsTableBody');
+            
+            if (pageData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" class="text-center py-8 text-gray-500">لا توجد طلبات</td></tr>';
+                document.getElementById('pagination').innerHTML = '';
+                return;
+            }
+            
+            let html = '';
+            pageData.forEach(req => {
+                html += `
+                    <tr onclick="editRequest(${req.id})" class="hover:bg-gray-50 cursor-pointer">
+                        <td>${req.request_number}</td>
+                        <td>${req.request_date}</td>
+                        <td>${req.requesting_department}</td>
+                        <td>${req.item_name}</td>
+                        <td>${req.item_code}</td>
+                        <td>${req.quantity} ${req.unit}</td>
+                        <td>${req.requester_name}</td>
+                        <td>${getStatusBadge(req.status)}</td>
+                        <td onclick="event.stopPropagation()">
+                            <button onclick="printRequest(${req.id})" class="text-blue-600 hover:text-blue-800 mx-1" title="طباعة">
+                                <i class="fas fa-print"></i>
+                            </button>
+                            <button onclick="editRequest(${req.id})" class="text-green-600 hover:text-green-800 mx-1" title="تعديل">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="deleteRequest(${req.id})" class="text-red-600 hover:text-red-800 mx-1" title="حذف">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+            
+            // Pagination
+            const totalPages = Math.ceil(filteredRequests.length / rowsPerPage);
+            document.getElementById('pagination').innerHTML = `
+                <div class="flex gap-2 items-center">
+                    <button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''} class="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-50">السابق</button>
+                    <span class="px-3 py-1">صفحة ${currentPage} من ${totalPages || 1}</span>
+                    <button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''} class="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-50">التالي</button>
+                </div>
+                <div class="text-sm text-gray-500">إجمالي: ${filteredRequests.length} طلب</div>
+            `;
+            
+            updateStats();
+        }
+        
+        function changePage(page) {
+            const totalPages = Math.ceil(filteredRequests.length / rowsPerPage);
+            if (page >= 1 && page <= totalPages) {
+                currentPage = page;
+                renderTable();
+            }
+        }
+        
+        function updateStats() {
+            const pending = requests.filter(r => r.status === 'pending').length;
+            const managerApproved = requests.filter(r => r.status === 'manager_approved').length;
+            const issued = requests.filter(r => r.status === 'issued').length;
+            document.getElementById('pendingCount').innerText = pending;
+            document.getElementById('managerApprovedCount').innerText = managerApproved;
+            document.getElementById('issuedCount').innerText = issued;
+            document.getElementById('totalCount').innerText = requests.length;
+        }
+        
+        // فتح نموذج جديد
+        function openNewRequestForm() {
+            document.getElementById('modalTitle').innerHTML = '<i class="fas fa-plus ml-2"></i> طلب صرف جديد';
+            document.getElementById('requestForm').reset();
+            document.getElementById('requestId').value = '';
+            
+            // توليد رقم طلب جديد
+            const today = new Date();
+            const year = today.getFullYear();
+            const nextNum = String(nextId).padStart(4, '0');
+            document.getElementById('requestNumber').value = `REQ-${year}-${nextNum}`;
+            document.getElementById('requestDate').value = today.toISOString().split('T')[0];
+            document.getElementById('status').value = 'pending';
+            
+            document.getElementById('requestModal').classList.remove('hidden');
+            document.getElementById('requestModal').classList.add('flex');
+        }
+        
+        function closeModal() {
+            document.getElementById('requestModal').classList.add('hidden');
+            document.getElementById('requestModal').classList.remove('flex');
+        }
+        
+        // تحديث بيانات الصنف عند اختيار الكود
+        function updateItemInfo() {
+            const code = document.getElementById('itemCode').value;
+            const item = itemsList.find(i => i.code === code);
+            if (item) {
+                document.getElementById('itemName').value = item.name_ar;
+                document.getElementById('unit').value = item.unit;
+            } else {
+                document.getElementById('itemName').value = '';
+                document.getElementById('unit').value = '';
+            }
+        }
+        
+        // حفظ الطلب
+        function saveRequest(event) {
+            event.preventDefault();
+            
+            const id = document.getElementById('requestId').value;
+            const requestData = {
+                request_number: document.getElementById('requestNumber').value,
+                request_date: document.getElementById('requestDate').value,
+                requesting_department: document.getElementById('requestingDepartment').value,
+                reason: document.getElementById('reason').value,
+                item_code: document.getElementById('itemCode').value,
+                item_name: document.getElementById('itemName').value,
+                unit: document.getElementById('unit').value,
+                quantity: parseFloat(document.getElementById('quantity').value),
+                notes: document.getElementById('notes').value,
+                requester_name: document.getElementById('requesterName').value,
+                requester_signature: document.getElementById('requesterSignature').value,
+                manager_name: document.getElementById('managerName').value,
+                manager_signature: document.getElementById('managerSignature').value,
+                manager_approval_date: document.getElementById('managerApprovalDate').value,
+                medical_director_name: document.getElementById('medicalDirectorName').value,
+                medical_director_signature: document.getElementById('medicalDirectorSignature').value,
+                status: document.getElementById('status').value,
+                created_at: new Date().toISOString().split('T')[0]
+            };
+            
+            if (id) {
+                // تعديل
+                const index = requests.findIndex(r => r.id == id);
+                if (index !== -1) {
+                    requestData.id = parseInt(id);
+                    requestData.created_at = requests[index].created_at;
+                    requests[index] = requestData;
+                    Swal.fire('تم التحديث', 'تم تعديل الطلب بنجاح', 'success');
+                }
+            } else {
+                // إضافة جديدة
+                requestData.id = nextId++;
+                requests.push(requestData);
+                Swal.fire('تم الحفظ', 'تم إضافة طلب الصرف بنجاح', 'success');
+            }
+            
+            saveToStorage();
+            applyFilters();
+            closeModal();
+        }
+        
+        function editRequest(id) {
+            const req = requests.find(r => r.id === id);
+            if (!req) return;
+            
+            document.getElementById('modalTitle').innerHTML = '<i class="fas fa-edit ml-2"></i> تعديل طلب الصرف';
+            document.getElementById('requestId').value = req.id;
+            document.getElementById('requestNumber').value = req.request_number;
+            document.getElementById('requestDate').value = req.request_date;
+            document.getElementById('requestingDepartment').value = req.requesting_department;
+            document.getElementById('reason').value = req.reason || '';
+            document.getElementById('itemCode').value = req.item_code;
+            updateItemInfo();
+            document.getElementById('quantity').value = req.quantity;
+            document.getElementById('notes').value = req.notes || '';
+            document.getElementById('requesterName').value = req.requester_name;
+            document.getElementById('requesterSignature').value = req.requester_signature || '';
+            document.getElementById('managerName').value = req.manager_name || '';
+            document.getElementById('managerSignature').value = req.manager_signature || '';
+            document.getElementById('managerApprovalDate').value = req.manager_approval_date || '';
+            document.getElementById('medicalDirectorName').value = req.medical_director_name || '';
+            document.getElementById('medicalDirectorSignature').value = req.medical_director_signature || '';
+            document.getElementById('status').value = req.status;
+            
+            document.getElementById('requestModal').classList.remove('hidden');
+            document.getElementById('requestModal').classList.add('flex');
+        }
+        
+        function deleteRequest(id) {
+            Swal.fire({
+                title: 'هل أنت متأكد؟',
+                text: 'لن تتمكن من استعادة هذا الطلب!',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'نعم، احذف',
+                cancelButtonText: 'إلغاء'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    requests = requests.filter(r => r.id !== id);
+                    saveToStorage();
+                    applyFilters();
+                    Swal.fire('تم الحذف', 'تم حذف الطلب بنجاح', 'success');
+                }
+            });
+        }
+        
+        function printRequest(id) {
+            // هنعمل صفحة الطباعة بعد كده
+            Swal.fire('قيد التطوير', 'صفحة الطباعة هتكون جاهزة قريباً', 'info');
+        }
+        
+        function refreshData() {
+            loadDataFromStorage();
+            applyFilters();
+        }
+        
+        // تحميل الأصناف في الـ Select
+        function loadItemsSelect() {
+            const select = document.getElementById('itemCode');
+            select.innerHTML = '<option value="">-- اختر الكود --</option>';
+            itemsList.forEach(item => {
+                select.innerHTML += `<option value="${item.code}">${item.code} - ${item.name_ar}</option>`;
+            });
+        }
+        
+        function loadDepartmentsSelect() {
+            const deptSelect = document.getElementById('requestingDepartment');
+            const filterSelect = document.getElementById('departmentFilter');
+            deptSelect.innerHTML = '<option value="">-- اختر جهة الطلب --</option>';
+            filterSelect.innerHTML = '<option value="all">جميع الإدارات</option>';
+            departmentsList.forEach(dept => {
+                deptSelect.innerHTML += `<option value="${dept.name_ar}">${dept.name_ar}</option>`;
+                filterSelect.innerHTML += `<option value="${dept.name_ar}">${dept.name_ar}</option>`;
+            });
+        }
+        
+        // Event Listeners
+        document.getElementById('searchInput').addEventListener('input', applyFilters);
+        document.getElementById('statusFilter').addEventListener('change', applyFilters);
+        document.getElementById('departmentFilter').addEventListener('change', applyFilters);
+        
+        // تهيئة الصفحة
+        loadDataFromStorage();
+        loadItemsSelect();
+        loadDepartmentsSelect();
+        applyFilters();
+        function printRequest(id) {
+    // فتح صفحة الطباعة مع تمرير الـ id
+    window.open(`print.html?id=${id}`, '_blank');
+}
+        // جعل functions عالمية
+        window.openNewRequestForm = openNewRequestForm;
+        window.closeModal = closeModal;
+        window.saveRequest = saveRequest;
+        window.editRequest = editRequest;
+        window.deleteRequest = deleteRequest;
+        window.printRequest = printRequest;
+        window.refreshData = refreshData;
+        window.updateItemInfo = updateItemInfo;
+        window.changePage = changePage;
+    </script>
+</body>
+</html>

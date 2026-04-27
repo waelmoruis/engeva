@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>جدول الطلبات - نظام المخزون</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="css/chat-widget.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background: #f0f9f0; 
+            overflow-x: hidden;
+        }
+        
+        /* القائمة الجانبية */
+        .sidebar { 
+            position: fixed; 
+            right: 0; 
+            top: 0; 
+            width: 280px; 
+            height: 100%; 
+            background: linear-gradient(180deg, #0f2c3f 0%, #1e4a6b 100%);
+            color: white; 
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+        }
+        
+        .sidebar.collapsed {
+            transform: translateX(100%);
+        }
+        
+        .main-content { 
+            transition: margin-right 0.3s ease;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .main-content.expanded {
+            margin-right: 0;
+        }
+        
+        .main-content:not(.expanded) {
+            margin-right: 280px;
+        }
+        
+        /* زر القائمة */
+        .toggle-sidebar-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1001;
+           background: linear-gradient(180deg, #0f2c3f 0%, #1e4a6b 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            font-size: 18px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+        
+        .toggle-sidebar-btn:hover {
+            background: linear-gradient(180deg, #0f2c3f 0%, #1e4a6b 100%);
+            transform: scale(1.05);
+        }
+        
+        @media (max-width: 768px) {
+            
+            .main-content:not(.expanded) {
+                margin-right: 0;
+            }
+            .sidebar {
+                transform: translateX(100%);
+            }
+            .sidebar.mobile-open {
+                transform: translateX(0);
+            }
+            .toggle-sidebar-btn {
+                top: 15px;
+                right: 15px;
+            }
+            .overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 999;
+                display: none;
+            }
+            .overlay.active {
+                display: block;
+            }
+        }
+        
+        @media (min-width: 769px) {
+            .overlay { display: none !important; }
+        }
+        
+        .sidebar a, .sidebar button {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            color: rgba(255,255,255,0.9);
+            text-decoration: none;
+            width: 100%;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .sidebar a:hover, .sidebar button:hover {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+        
+        .sidebar a.active {
+            background: rgba(255,255,255,0.3);
+            color: white;
+        }
+        
+        .profile-section {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            margin-bottom: 20px;
+        }
+        
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            margin: 0 auto 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            font-weight: bold;
+            border: 3px solid white;
+        }
+        
+        /* رأس الصفحة */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .page-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1e4a6b;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        @media (max-width: 768px) {
+            .page-title { font-size: 20px; }
+        }
+        
+        .add-request-btn {
+             background: linear-gradient(180deg, #0f2c3f 0%, #1e4a6b 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .add-request-btn:hover {
+          background: linear-gradient(180deg, #0f2c3f 0%, #1e4a6b 100%);
+            transform: translateY(-2px);
+        }
+        
+        /* بطاقات الإحصائيات */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+        
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            background: #f0f9f0;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #1e4a6b;
+        }
+        
+        .stat-info { flex: 1; }
+        .stat-label { font-size: 13px; color: #718096; margin-bottom: 5px; }
+        .stat-value { font-size: 28px; font-weight: bold; color: #1e4a6b; }
+        
+        /* شريط الأدوات */
+        .toolbar {
+            background: white;
+            border-radius: 16px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .search-input:focus {
+            border-color: #1e4a6b;
+            outline: none;
+        }
+        
+        /* الفلاتر السريعة */
+        .filters-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .filter-chip {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .filter-chip:hover { background: #e2e8f0; }
+        .filter-chip.active {  background: linear-gradient(180deg, #0f2c3f 0%, #1e4a6b 100%);}
+        
+        /* إدارة الأعمدة */
+        .columns-manager {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .columns-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .columns-btn {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+        
+        .columns-btn:hover { background: #e2e8f0; }
+        
+        .columns-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            width: 280px;
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .columns-dropdown.show { display: block; }
+        .columns-list { padding: 10px; }
+        
+        .column-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: move;
+        }
+        
+        .column-item:hover { background: #f0f9f0; }
+        .drag-icon { cursor: grab; color: #718096; }
+        
+        /* الجدول */
+        .table-wrapper {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            overflow: auto;
+            max-height: calc(100vh - 480px);
+            min-height: 400px;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+        
+        .data-table th {
+            background: linear-gradient(180deg, #0f2c3f 0%, #1e4a6b 100%);
+            color: white;
+            padding: 14px 12px;
+            text-align: right;
+            font-weight: 600;
+            font-size: 14px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        
+        .data-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            white-space: nowrap;
+        }
+        
+        .data-table tr:hover {
+            background: #f0fff4;
+            cursor: pointer;
+        }
+        
+        /* حالات الطلب */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .status-on-request { background: #fef3c7; color: #92400e; }
+        .status-on-request-new-code { background: #fed7aa; color: #9a3412; }
+        .status-oracle-done { background: #dbeafe; color: #1e40af; }
+        .status-manager-done { background: #d1fae5; color: #065f46; }
+        .status-reject { background: #fee2e2; color: #991b1b; }
+        
+        /* أزرار الإجراءات */
+        .action-buttons { display: flex; gap: 8px; }
+        
+        .action-btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+        
+        .action-edit { background: #3b82f6; color: white; }
+        .action-edit:hover { background: #2563eb; }
+        .action-delete { background: #ef4444; color: white; }
+        .action-delete:hover { background: #dc2626; }
+        
+        /* مودال */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 15px;
+        }
+        
+        .modal.open { display: flex; }
+        
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 2px solid #f0f9f0;
+        }
+        
+        .modal-title { font-size: 18px; font-weight: bold; color: #1e4a6b; }
+        .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #718096; }
+        
+        /* رسائل */
+        .message {
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        
+        .message.error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        .message.success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+        
+        .footer {
+            text-align: center;
+            padding: 15px;
+            color: #718096;
+            font-size: 12px;
+            border-top: 1px solid #e2e8f0;
+            margin-top: 20px;
+        }
+        
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #1e4a6b; border-radius: 10px; }
+        
+        .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; color: #4a5568; font-size: 13px; }
+        .form-group input, .form-group select { width: 100%; padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px; }
+        .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding: 15px; border-top: 2px solid #f0f9f0; }
+        .btn-save { background: #2f855a; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; }
+        .btn-cancel { background: #e2e8f0; color: #4a5568; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div id="overlay" class="overlay" onclick="closeSidebar()"></div>
+    <button class="toggle-sidebar-btn" onclick="toggleSidebar()">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <div id="sidebar" class="sidebar">
+        <div class="profile-section">
+            <div class="profile-avatar" id="profileInitial">أ</div>
+            <div id="profileName" class="font-bold text-lg">جاري التحميل...</div>
+            <div id="profileRole" class="text-sm text-white/80 mt-1">مستخدم</div>
+        </div>
+        <nav>
+            <a href="user-dashboard.html"><i class="fas fa-home ml-2"></i> الرئيسية</a>
+            <a href="user-inventory.html"><i class="fa-solid fa-warehouse ml-2"></i> المخزون</a>
+            <a href="Request.html" class="active"><i class="fas fa-clipboard-list ml-2"></i> جدول الطلبات</a>
+            <a href="user-profile.html"><i class="fas fa-user ml-2"></i> الملف الشخصي</a>
+            <button onclick="logout()"><i class="fas fa-sign-out-alt ml-2"></i> تسجيل خروج</button>
+        </nav>
+        <div class="absolute bottom-0 w-full p-4 text-center text-white/60 text-xs border-t border-white/20">
+            <p>الإدارة الهندسية - برنامج المشتريات © 2026</p>
+        </div>
+    </div>
+
+    <div class="main-content" id="mainContent">
+        <div class="page-header">
+            <h1 class="page-title"><i class="fas fa-clipboard-list"></i> جدول الطلبات</h1>
+            <a href="user-add-request.html" class="add-request-btn"><i class="fas fa-plus"></i> إضافة طلب جديد</a>
+        </div>
+
+        <div id="errorMessage" class="message error"></div>
+        <div id="successMessage" class="message success"></div>
+
+        <!-- إحصائيات -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-file-alt"></i></div>
+                <div class="stat-info">
+                    <div class="stat-label">إجمالي الطلبات</div>
+                    <div class="stat-value" id="totalRequestsCount">0</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                <div class="stat-info">
+                    <div class="stat-label">قيد المراجعة</div>
+                    <div class="stat-value" id="onRequestCount">0</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                <div class="stat-info">
+                    <div class="stat-label">مكتملة</div>
+                    <div class="stat-value" id="managerDoneCount">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- شريط الأدوات -->
+        <div class="toolbar">
+            <input type="text" id="quickSearch" placeholder="🔍 بحث سريع في جميع الحقول..." class="search-input">
+            <div class="filters-bar" id="filtersBar">
+                <span class="filter-chip" data-filter="status" data-value="on request">
+                    <i class="fas fa-hourglass-half"></i> قيد المراجعة
+                </span>
+                <span class="filter-chip" data-filter="status" data-value="manager done">
+                    <i class="fas fa-check-circle"></i> مكتملة
+                </span>
+                <span class="filter-chip" data-filter="status" data-value="reject">
+                    <i class="fas fa-times-circle"></i> مرفوضة
+                </span>
+            </div>
+        </div>
+
+        <!-- إدارة الأعمدة -->
+        <div class="columns-manager">
+            <div class="columns-controls">
+                <div style="position: relative;">
+                    <button class="columns-btn" onclick="toggleColumnsDropdown()">
+                        <i class="fas fa-columns"></i>
+                        <span id="selectedColumnsCount">اختيار الأعمدة</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="columns-dropdown" id="columnsDropdown">
+                        <div class="columns-list" id="columnsList"></div>
+                        <div class="p-3 border-t text-center text-xs text-gray-500">اسحب الأيقونة لترتيب الأعمدة</div>
+                    </div>
+                </div>
+                <button class="columns-btn" onclick="selectAllColumns()"><i class="fas fa-check-double"></i> تحديد الكل</button>
+                <button class="columns-btn" onclick="resetDefaultColumns()"><i class="fas fa-undo"></i> استعادة</button>
+            </div>
+            <div class="selected-count" id="visibleCount">0/0</div>
+        </div>
+
+        <!-- الجدول -->
+        <div class="table-wrapper">
+            <table class="data-table" id="requestsTable">
+                <thead id="tableHeader"></thead>
+                <tbody id="dataTableBody">
+                    <tr><td colspan="20" class="text-center py-12"><div class="flex justify-center items-center gap-2"><i class="fas fa-spinner fa-spin text-green-600"></i> جاري تحميل البيانات...</div></td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer">آخر تحديث: <span id="lastUpdateTimeFooter">—</span></div>
+    </div>
+
+    <!-- مودال التفاصيل -->
+    <div id="itemModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">📋 تفاصيل الطلب</h2>
+                <button onclick="closeModal()" class="close-btn">✕</button>
+            </div>
+            <div id="modalDetails" class="p-5 space-y-3"></div>
+            <div class="p-5 pt-0"><button onclick="closeModal()" class="w-full py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition">إغلاق</button></div>
+        </div>
+    </div>
+
+    <!-- مودال التعديل -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">✏️ تعديل الطلب</h2>
+                <button onclick="closeEditModal()" class="close-btn">✕</button>
+            </div>
+            <form id="editForm" class="p-5">
+                <input type="hidden" id="editRequestId">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>الوحدة (Units)</label>
+                        <select id="editUnits" class="w-full p-2 border rounded-lg">
+                            <option value="">-- اختر الوحدة --</option>
+                            <option value="عدد">عدد</option>
+                            <option value="كجم">كجم</option>
+                            <option value="جرام">جرام</option>
+                            <option value="لتر">لتر</option>
+                            <option value="متر">متر</option>
+                            <option value="علبة">علبة</option>
+                            <option value="باكيت">باكيت</option>
+                            <option value="لفة">لفة</option>
+                            <option value="طن">طن</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>الكمية (Quantity)</label>
+                        <input type="number" id="editQuantity" step="0.01" class="w-full p-2 border rounded-lg">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn-save">💾 حفظ التعديلات</button>
+                    <button type="button" onclick="closeEditModal()" class="btn-cancel">❌ إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabase.js"></script>
+    <script>
+        const supabaseClient = window.AppSupabase || window.supabase;
+        let currentUser = null;
+        let allRequests = [];
+        let currentSort = { column: 'id', direction: 'desc' };
+        let draggedColumn = null;
+        
+        // تعريف الأعمدة
+        let columns = [
+            { id: 'id', label: 'ID', visible: true },
+            { id: 'Request Date', label: 'تاريخ الطلب', visible: true },
+            { id: 'Requested by', label: 'مقدم الطلب', visible: true },
+            { id: 'groups', label: 'المجموعة', visible: true },
+            { id: 'Request', label: 'الطلب', visible: true },
+            { id: 'code', label: 'الكود', visible: true },
+            { id: 'Quantity', label: 'الكمية', visible: true },
+            { id: 'Units', label: 'الوحدة', visible: true },
+            { id: 'Project', label: 'المشروع', visible: true },
+            { id: 'Status', label: 'الحالة', visible: true },
+            { id: 'pr', label: 'PR', visible: true }
+        ];
+        
+        // دالة تنسيق التاريخ
+        function formatDate(dateStr) {
+            if (!dateStr) return '—';
+            if (dateStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) return dateStr;
+            try {
+                const date = new Date(dateStr);
+                if (isNaN(date.getTime())) return dateStr;
+                const day = String(date.getDate()).padStart(2, '0');
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const year = date.getFullYear();
+                return `${day}/${month}/${year}`;
+            } catch(e) { return dateStr; }
+        }
+        
+        function getStatusClass(status) {
+            const s = (status || '').toLowerCase();
+            if (s === 'on request') return 'status-on-request';
+            if (s === 'on request new code') return 'status-on-request-new-code';
+            if (s.includes('oracle done')) return 'status-oracle-done';
+            if (s.includes('manager done')) return 'status-manager-done';
+            if (s.includes('reject')) return 'status-reject';
+            return '';
+        }
+        
+        function renderColumnsList() {
+            const container = document.getElementById('columnsList');
+            if (!container) return;
+            container.innerHTML = '';
+            columns.forEach((col, index) => {
+                const div = document.createElement('div');
+                div.className = 'column-item';
+                div.draggable = true;
+                div.setAttribute('data-index', index);
+                div.innerHTML = `
+                    <i class="fas fa-grip-vertical drag-icon"></i>
+                    <input type="checkbox" ${col.visible ? 'checked' : ''} onchange="toggleColumnVisibility('${col.id}', this.checked)">
+                    <span class="flex-1">${col.label}</span>
+                `;
+                div.addEventListener('dragstart', (e) => {
+                    draggedColumn = e.target.closest('.column-item');
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+                div.addEventListener('dragover', (e) => e.preventDefault());
+                div.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    const target = e.target.closest('.column-item');
+                    if (!target || !draggedColumn || draggedColumn === target) return;
+                    const fromIndex = parseInt(draggedColumn.getAttribute('data-index'));
+                    const toIndex = parseInt(target.getAttribute('data-index'));
+                    const moved = columns[fromIndex];
+                    columns.splice(fromIndex, 1);
+                    columns.splice(toIndex, 0, moved);
+                    renderColumnsList();
+                    renderTable();
+                });
+                container.appendChild(div);
+            });
+        }
+        
+        function toggleColumnsDropdown() {
+            const dropdown = document.getElementById('columnsDropdown');
+            dropdown.classList.toggle('show');
+            renderColumnsList();
+        }
+        
+        function toggleColumnVisibility(columnId, isVisible) {
+            const col = columns.find(c => c.id === columnId);
+            if (col) col.visible = isVisible;
+            updateColumnsCount();
+            renderTable();
+        }
+        
+        function selectAllColumns() {
+            columns.forEach(c => c.visible = true);
+            updateColumnsCount();
+            renderTable();
+        }
+        
+        function resetDefaultColumns() {
+            columns.forEach(c => c.visible = true);
+            updateColumnsCount();
+            renderTable();
+        }
+        
+        function updateColumnsCount() {
+            const visibleCount = columns.filter(c => c.visible).length;
+            document.getElementById('visibleCount').textContent = `${visibleCount}/${columns.length}`;
+            document.getElementById('selectedColumnsCount').textContent = `${visibleCount} عمود`;
+        }
+        
+        function renderTable() {
+            const visibleCols = columns.filter(c => c.visible);
+            updateColumnsCount();
+            
+            let headerHtml = '加';
+            visibleCols.forEach(col => {
+                const sortIcon = currentSort.column === col.id ? (currentSort.direction === 'asc' ? '↑' : '↓') : '↕️';
+                headerHtml += `<th onclick="sortBy('${col.id}')">${col.label} <span style="font-size:12px;">${sortIcon}</span></th>`;
+            });
+            headerHtml += '<th>الإجراءات</th>?</thead>';
+            document.getElementById('tableHeader').innerHTML = headerHtml;
+            
+            const tbody = document.getElementById('dataTableBody');
+            if (!allRequests || allRequests.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="20" class="text-center py-12 text-gray-500">لا توجد طلبات</td></tr>';
+                return;
+            }
+            
+            let rows = '';
+            allRequests.forEach(req => {
+                rows += '<tr onclick="openRequestModal(' + req.id + ')">';
+                visibleCols.forEach(col => {
+                    let value = req[col.id] || '—';
+                    if (col.id === 'Status') {
+                        value = `<span class="status-badge ${getStatusClass(value)}">${value}</span>`;
+                    } else if (col.id === 'Request Date') {
+                        value = formatDate(value);
+                    } else if (col.id === 'Request' && value.length > 40) {
+                        value = value.substring(0, 40) + '...';
+                    }
+                    rows += `<td>${value}</td>`;
+                });
+                const status = (req.Status || '').toLowerCase();
+                const isEditable = status === 'on request' || status === 'on request new code';
+                rows += `<td class="action-buttons">
+                    ${isEditable ? `<button class="action-btn action-edit" onclick="event.stopPropagation(); openEditModal(${req.id})">✏️ تعديل</button>` : ''}
+                  
+                </td>`;
+                rows += '</tr>';
+            });
+            tbody.innerHTML = rows;
+        }
+        
+        function sortBy(column) {
+            if (currentSort.column === column) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = column;
+                currentSort.direction = 'asc';
+            }
+            applyFilters();
+        }
+        
+        async function applyFilters() {
+            let query = supabaseClient.from('الطلبات').select('*');
+            
+            const quickSearch = document.getElementById('quickSearch').value;
+            if (quickSearch) {
+                query = query.or(`"Requested by".ilike.%${quickSearch}%,groups.ilike.%${quickSearch}%,Request.ilike.%${quickSearch}%,code.ilike.%${quickSearch}%,Units.ilike.%${quickSearch}%,Project.ilike.%${quickSearch}%,Status.ilike.%${quickSearch}%,pr.ilike.%${quickSearch}%`);
+            }
+            
+            query = query.order(currentSort.column, { ascending: currentSort.direction === 'asc' });
+            
+            const { data, error } = await query;
+            if (error) { console.error('Error:', error); return; }
+            
+            allRequests = data || [];
+            updateStats();
+            renderTable();
+        }
+        
+        function updateStats() {
+            const total = allRequests.length;
+            const onRequest = allRequests.filter(r => (r.Status || '').toLowerCase() === 'on request').length;
+            const managerDone = allRequests.filter(r => (r.Status || '').toLowerCase().includes('manager done')).length;
+            document.getElementById('totalRequestsCount').textContent = total;
+            document.getElementById('onRequestCount').textContent = onRequest;
+            document.getElementById('managerDoneCount').textContent = managerDone;
+        }
+        
+        function openRequestModal(id) {
+            const req = allRequests.find(r => r.id === id);
+            if (!req) return;
+            let detailsHtml = '<div class="space-y-2">';
+            for (let key in req) {
+                if (key === 'Request Date') {
+                    detailsHtml += `<div><strong>${key}:</strong> ${formatDate(req[key])}</div>`;
+                } else if (key !== 'id') {
+                    detailsHtml += `<div><strong>${key}:</strong> ${req[key] || '—'}</div>`;
+                }
+            }
+            detailsHtml += '</div>';
+            document.getElementById('modalDetails').innerHTML = detailsHtml;
+            document.getElementById('itemModal').classList.add('open');
+        }
+        
+        function closeModal() {
+            document.getElementById('itemModal').classList.remove('open');
+        }
+        
+        function openEditModal(id) {
+            const req = allRequests.find(r => r.id === id);
+            if (!req) return;
+            document.getElementById('editRequestId').value = req.id;
+            document.getElementById('editQuantity').value = req.Quantity || '';
+            document.getElementById('editUnits').value = req.Units || '';
+            document.getElementById('editModal').classList.add('open');
+        }
+        
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('open');
+        }
+        
+      
+        
+        document.getElementById('editForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editRequestId').value;
+            const units = document.getElementById('editUnits').value;
+            const quantity = parseFloat(document.getElementById('editQuantity').value) || null;
+            
+            try {
+                const { error } = await supabaseClient.from('الطلبات').update({ Units: units || null, Quantity: quantity }).eq('id', id);
+                if (error) throw error;
+                closeEditModal();
+                showSuccess('✅ تم تحديث الوحدة والكمية بنجاح');
+                applyFilters();
+            } catch (e) {
+                showError('❌ خطأ: ' + e.message);
+            }
+        });
+        
+        function showError(msg) {
+            const div = document.getElementById('errorMessage');
+            div.textContent = msg;
+            div.style.display = 'block';
+            setTimeout(() => div.style.display = 'none', 3000);
+        }
+        
+        function showSuccess(msg) {
+            const div = document.getElementById('successMessage');
+            div.textContent = msg;
+            div.style.display = 'block';
+            setTimeout(() => div.style.display = 'none', 3000);
+        }
+        
+        async function logout() {
+            await supabaseClient.auth.signOut();
+            window.location.href = 'index.html';
+        }
+        
+        async function loadUserProfile() {
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (!user) { window.location.href = 'index.html'; return; }
+                const { data: userData } = await supabaseClient.from('users').select('*').eq('id', user.id).single();
+                if (userData) {
+                    currentUser = userData;
+                    const displayName = userData.full_name || userData.username;
+                    document.getElementById('profileName').textContent = displayName;
+                    document.getElementById('profileInitial').textContent = displayName.charAt(0);
+                    document.getElementById('profileRole').textContent = userData.role === 'admin' ? 'مدير النظام' : 'مستخدم';
+                }
+                await applyFilters();
+                document.getElementById('lastUpdateTimeFooter').textContent = new Date().toLocaleString('ar-EG');
+            } catch (e) { console.error('Error:', e); }
+        }
+        
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            const overlay = document.getElementById('overlay');
+            if (window.innerWidth <= 768) {
+                sidebar.classList.toggle('mobile-open');
+                overlay.classList.toggle('active');
+            } else {
+                sidebar.classList.toggle('collapsed');
+                mainContent.classList.toggle('expanded');
+            }
+        }
+        
+        function closeSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('active');
+        }
+        
+        document.querySelectorAll('.filter-chip').forEach(chip => {
+            chip.addEventListener('click', function() {
+                const value = this.getAttribute('data-value');
+                document.getElementById('quickSearch').value = value;
+                document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                applyFilters();
+            });
+        });
+        
+        document.getElementById('quickSearch').addEventListener('input', function() {
+            document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+            applyFilters();
+        });
+        
+        document.addEventListener('click', function(e) {
+            const sidebar = document.getElementById('sidebar');
+            const toggleBtn = document.querySelector('.toggle-sidebar-btn');
+            if (window.innerWidth <= 768 && sidebar.classList.contains('mobile-open')) {
+                if (!sidebar.contains(e.target) && !toggleBtn.contains(e.target)) closeSidebar();
+            }
+        });
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUserProfile();
+            updateColumnsCount();
+            if (window.innerWidth > 768) document.getElementById('mainContent').classList.remove('expanded');
+        });
+        
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 768) {
+                document.getElementById('sidebar').classList.remove('mobile-open');
+                document.getElementById('overlay').classList.remove('active');
+                if (!document.getElementById('sidebar').classList.contains('collapsed')) {
+                    document.getElementById('mainContent').classList.remove('expanded');
+                }
+            }
+        });
+    </script>
+    <script src="js/chat-widget.js"></script>
+</body>
+</html>

@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>جميع الطلبات - مدير الإدارة</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Cairo', sans-serif; background: #f0f9f0; overflow-x: hidden; }
+        
+        .sidebar { position: fixed; right: 0; top: 0; width: 280px; height: 100%; background: linear-gradient(180deg, #2f855a 0%, #1e5a3a 100%); color: white; box-shadow: -2px 0 10px rgba(0,0,0,0.1); z-index: 1000; transition: transform 0.3s ease; overflow-y: auto; }
+        .sidebar.collapsed { transform: translateX(100%); }
+        .main-content { transition: margin-right 0.3s ease; min-height: 100vh; padding: 15px; }
+        .main-content.expanded { margin-right: 0; }
+        .main-content:not(.expanded) { margin-right: 280px; }
+        .toggle-sidebar-btn { position: fixed; top: 15px; right: 15px; z-index: 1001; background: #2f855a; color: white; border: none; border-radius: 8px; padding: 8px 12px; font-size: 16px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.2); transition: all 0.3s; }
+        .toggle-sidebar-btn:hover { background: #1e5a3a; transform: scale(1.05); }
+        
+        @media (max-width: 768px) {
+            .main-content:not(.expanded) { margin-right: 0; }
+            .sidebar { transform: translateX(100%); }
+            .sidebar.mobile-open { transform: translateX(0); }
+            .toggle-sidebar-btn { top: 10px; right: 10px; padding: 6px 10px; font-size: 14px; }
+            .overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; display: none; }
+            .overlay.active { display: block; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
+        }
+        @media (min-width: 769px) { .overlay { display: none !important; } }
+        
+        .sidebar a, .sidebar button { display: flex; align-items: center; padding: 10px 14px; border-radius: 8px; margin-bottom: 5px; color: rgba(255,255,255,0.9); text-decoration: none; width: 100%; background: transparent; border: none; cursor: pointer; transition: all 0.3s; font-size: 14px; }
+        .sidebar a:hover, .sidebar button:hover { background: rgba(255,255,255,0.2); color: white; }
+        .sidebar a.active { background: rgba(255,255,255,0.3); color: white; }
+        .profile-section { text-align: center; padding: 15px 0; border-bottom: 1px solid rgba(255,255,255,0.2); margin-bottom: 15px; }
+        .profile-avatar { width: 70px; height: 70px; background: rgba(255,255,255,0.2); border-radius: 50%; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: bold; border: 3px solid white; }
+        
+        /* بطاقات الإحصائيات */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .stat-card {
+            background: white;
+            padding: 10px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .stat-icon { width: 35px; height: 35px; background: #f0f9f0; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #2f855a; }
+        .stat-info { flex: 1; }
+        .stat-label { font-size: 10px; color: #718096; }
+        .stat-value { font-size: 18px; font-weight: bold; color: #2f855a; }
+        
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 6px !important; }
+            .stat-card { padding: 8px !important; }
+            .stat-icon { width: 30px !important; height: 30px !important; font-size: 14px !important; }
+            .stat-value { font-size: 16px !important; }
+            .stat-label { font-size: 9px !important; }
+        }
+        
+        .toolbar { background: white; border-radius: 12px; padding: 12px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
+        .search-input { width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 13px; }
+        .search-input:focus { border-color: #2f855a; outline: none; }
+        
+        .filters-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e2e8f0; }
+        .filter-group { flex: 1; min-width: 150px; }
+        .filter-group label { display: block; font-size: 10px; color: #718096; margin-bottom: 3px; }
+        .filter-group select { width: 100%; padding: 5px 8px; border: 1px solid #e2e8f0; border-radius: 6px; background: white; font-family: 'Cairo'; font-size: 11px; cursor: pointer; }
+        
+        .screenshot-btn { background: #2f855a; color: white; border: none; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 11px; display: flex; align-items: center; gap: 5px; }
+        .screenshot-btn:hover { background: #1e5a3a; transform: translateY(-1px); }
+        
+        .table-wrapper {
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow-x: auto;
+            overflow-y: auto;
+            border: 1px solid #edf2f7;
+            max-height: calc(100vh - 420px);
+            width: 100%;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            min-width: 1200px;
+        }
+
+        .data-table th {
+            background: #f8fafd;
+            color: #1e293b;
+            padding: 10px 8px;
+            font-weight: 600;
+            font-size: 11px;
+            white-space: nowrap;
+            border-bottom: 1px solid #e2edf2;
+            cursor: pointer;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .data-table th:hover { background: #f1f5f9; }
+        
+        .sort-icon { display: inline-flex; align-items: center; justify-content: center; margin-right: 4px; font-size: 10px; color: #94a3b8; }
+        .sort-icon.active { color: #2f855a; }
+        
+        .checkbox-col { width: 35px; text-align: center; }
+        .checkbox-col input { width: 16px; height: 16px; cursor: pointer; }
+
+        .data-table td {
+            padding: 8px;
+            border-bottom: 1px solid #edf2f7;
+            vertical-align: middle;
+        }
+
+        .stock-value {
+            font-weight: 600;
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 20px;
+            font-size: 10px;
+            min-width: 40px;
+            text-align: center;
+        }
+        .stock-high { background: #e6f9ed; color: #0b5e42; }
+        .stock-low { background: #fff5e6; color: #b45309; }
+        .stock-out { background: #fee9e9; color: #c2410c; }
+        .stock-zero { background: #fef3c7; color: #b45309; }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 9px;
+            font-weight: 600;
+        }
+        .status-on-request { background: #fef3c7; color: #92400e; }
+        .status-manager-done { background: #d1fae5; color: #065f46; }
+        .status-oracle-done { background: #e9d8fd; color: #6b21a5; }
+        .status-reject { background: #fee2e2; color: #991b1b; }
+        .status-added-store { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+
+        @media (max-width: 640px) {
+            .main-content { padding: 6px !important; }
+            .data-table { font-size: 10px !important; min-width: 1000px !important; }
+            .data-table th { padding: 6px 4px !important; font-size: 9px !important; }
+            .data-table td { padding: 5px 4px !important; }
+            .filter-group { min-width: auto !important; }
+            .filters-row { flex-direction: column !important; gap: 6px !important; }
+        }
+
+        .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 2000; padding: 15px; }
+        .modal.open { display: flex; }
+        .modal-content { background: white; border-radius: 16px; max-width: 650px; width: 90%; max-height: 85vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; }
+        .modal-title { font-size: 15px; font-weight: bold; color: #2f855a; }
+        .close-btn { background: none; border: none; font-size: 18px; cursor: pointer; color: #718096; }
+        .modal-footer { padding: 12px 16px; border-top: 1px solid #e2e8f0; display: flex; gap: 12px; justify-content: space-between; align-items: center; }
+        .btn-cancel { background: #e2e8f0; color: #4a5568; padding: 6px 16px; border: none; border-radius: 6px; cursor: pointer; }
+        
+        .screenshot-btn-detail {
+            background: #2f855a;
+            color: white;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        .screenshot-btn-detail:hover { background: #1e5a3a; transform: translateY(-1px); }
+        
+        .message { padding: 8px 12px; border-radius: 8px; margin-bottom: 12px; display: none; font-size: 12px; }
+        .message.error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        .message.success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+        
+        .footer { text-align: center; padding: 8px; color: #718096; font-size: 10px; border-top: 1px solid #e2e8f0; margin-top: 12px; }
+        
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #2f855a; border-radius: 10px; }
+        
+        .details-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .detail-item { border-bottom: 1px solid #f0f0f0; padding-bottom: 6px; }
+        .detail-label { font-size: 11px; color: #718096; margin-bottom: 3px; }
+        .detail-value { font-weight: 600; color: #1f2937; font-size: 13px; }
+        
+        .data-table th:first-child, .data-table td:first-child { width: 35px; text-align: center; }
+        .data-table th:nth-child(2), .data-table td:nth-child(2) { width: 95px; text-align: center; }
+        .data-table th:nth-child(3), .data-table td:nth-child(3) { width: 85px; text-align: center; }
+        .data-table th:nth-child(4), .data-table td:nth-child(4) { min-width: 180px; max-width: 280px; white-space: normal; word-break: break-word; }
+        .data-table th:nth-child(5), .data-table td:nth-child(5) { width: 95px; text-align: center; }
+        .data-table th:nth-child(6), .data-table td:nth-child(6) { width: 65px; text-align: center; }
+        .data-table th:nth-child(7), .data-table td:nth-child(7) { width: 70px; text-align: center; }
+        .data-table th:nth-child(8), .data-table td:nth-child(8) { min-width: 110px; }
+        .data-table th:nth-child(9), .data-table td:nth-child(9) { min-width: 90px; }
+        .data-table th:nth-child(10), .data-table td:nth-child(10) { min-width: 85px; }
+        .data-table th:nth-child(11), .data-table td:nth-child(11) { width: 100px; text-align: center; }
+        
+        .data-table tr { border-bottom: 1px solid #e2e8f0; }
+        .data-table tr:last-child { border-bottom: none; }
+        
+        .main-content h1 { margin-right: 0; margin-bottom: 15px; padding-right: 55px; }
+        @media (max-width: 768px) { .main-content h1 { margin-bottom: 10px; padding-right: 25px; font-size: 0.9rem; } }
+         /* ========================================
+   التحكم في عرض الأعمدة
+   ======================================== */
+
+
+/* العمود الأول - معرف الطلب */
+.data-table th:nth-child(1),
+.data-table td:nth-child(1) {
+    width: 100px;
+    text-align: center;
+}
+
+/* العمود الثاني - التاريخ */
+.data-table th:nth-child(2),
+.data-table td:nth-child(2) {
+    width: 85px;
+    white-space: nowrap;
+    text-align: center;
+}
+
+/* العمود الثالث - الطلب */
+.data-table th:nth-child(3),
+.data-table td:nth-child(3) {
+    min-width: 180px;
+    max-width: 280px;
+    white-space: normal;
+    word-break: break-word;
+}
+
+/* العمود الرابع - كود الصنف */
+.data-table th:nth-child(4),
+.data-table td:nth-child(4) {
+    width: 100px;
+    text-align: center;
+}
+
+/* العمود الخامس - الكمية */
+.data-table th:nth-child(5),
+.data-table td:nth-child(5) {
+    width: 70px;
+    text-align: center;
+}
+
+/* العمود السادس - الرصيد */
+.data-table th:nth-child(6),
+.data-table td:nth-child(6) {
+    width: 80px;
+    text-align: center;
+}
+
+/* العمود السابع - مقدم الطلب */
+.data-table th:nth-child(7),
+.data-table td:nth-child(7) {
+    min-width: 120px;
+}
+
+/* العمود الثامن - الماكينة */
+.data-table th:nth-child(8),
+.data-table td:nth-child(8) {
+    min-width: 100px;
+}
+
+/* العمود التاسع - المبنى */
+.data-table th:nth-child(9),
+.data-table td:nth-child(9) {
+    min-width: 90px;
+}
+
+/* العمود العاشر - الحالة */
+.data-table th:nth-child(10),
+.data-table td:nth-child(10) {
+    width: 110px;
+    text-align: center;
+}
+
+
+/* بورد بين الصفوف */
+.data-table tr {
+    border-bottom: 1px solid #dbe0e4;
+}
+
+/* بورد لآخر صف */
+.data-table tr:last-child {
+    border-bottom: none;
+        border: 1px solid #e2e8f0;
+}
+/* بورد حول كل خلية */
+.data-table th,
+.data-table td {
+    border: 1px solid #e2e8f0;
+}
+
+/* أو بورد داخلي فقط */
+.data-table td {
+    border-right: 1px solid #e2e8f0;
+    border-bottom: 1px solid #edf2f7;
+}
+
+.data-table td:last-child {
+    border-right: none;
+}
+/* ضبط المسافة الثابتة للعنوان */
+.main-content h1 {
+    margin-right: 0;
+    margin-bottom: 15px;
+    padding-right: 55px;
+}
+
+/* عند تصغير الشاشة */
+@media (max-width: 768px) {
+    .main-content h1 {
+        margin-bottom: 10px;
+        padding-right: 25px;
+        font-size: 0.9rem;
+    }
+}
+/* ========================================
+   تحسين شريط التمرير للجدول
+   ======================================== */
+
+/* جعل شريط التمرير أكثر وضوحاً */
+.table-wrapper::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+.table-wrapper::-webkit-scrollbar-track {
+    background: #e2e8f0;
+    border-radius: 10px;
+    margin: 5px;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb {
+    background: #2f855a;
+    border-radius: 10px;
+    transition: all 0.2s;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #1e5a3a;
+    cursor: pointer;
+}
+
+/* تلميح للمستخدم أن هناك تمرير */
+.scroll-hint {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin: 10px 0;
+    color: #2f855a;
+    font-size: 12px;
+    animation: bounce 1.5s infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(5px); }
+    100% { transform: translateX(0); }
+}
+
+/* للشاشات الصغيرة - إظهار تلميح التمرير */
+@media (max-width: 768px) {
+    .scroll-hint {
+        display: flex;
+        font-size: 10px;
+    }
+}
+
+@media (min-width: 769px) {
+    .scroll-hint {
+        display: none;
+    }
+}
+/* تحسين التمرير على الجوال */
+@media (max-width: 768px) {
+    .table-wrapper {
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
+    }
+    
+    /* إضافة ظل للدلالة على وجود تمرير */
+    .table-wrapper {
+        position: relative;
+    }
+    
+    .table-wrapper::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 30px;
+        height: 100%;
+        background: linear-gradient(to left, transparent, rgba(0,0,0,0.05));
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    
+    .table-wrapper:hover::after {
+        opacity: 1;
+    }
+}
+    </style>
+</head>
+<body>
+    <div id="overlay" class="overlay" onclick="closeSidebar()"></div>
+    <button class="toggle-sidebar-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+
+    <div id="sidebar" class="sidebar">
+        <div class="profile-section">
+            <div class="profile-avatar" id="profileInitial">م</div>
+            <div id="profileName" class="font-bold text-md">جاري التحميل...</div>
+            <div id="profileRole" class="text-xs text-white/80 mt-1">مدير إدارة</div>
+        </div>
+        <nav>
+            <a href="general-manager-dashboard.html" class="active"><i class="fas fa-tachometer-alt ml-2"></i> لوحة التحكم</a>
+            <a href="general-manager-requests.html"><i class="fas fa-clipboard-list ml-2"></i> جميع الطلبات</a>
+            <a href="manager-profile.html"><i class="fas fa-user ml-2"></i> الملف الشخصي</a>
+            <button onclick="logout()"><i class="fas fa-sign-out-alt ml-2"></i> تسجيل خروج</button>
+        </nav>
+        <div class="absolute bottom-0 w-full p-3 text-center text-white/60 text-xs border-t border-white/20">
+            <p>الإدارة الهندسية - برنامج المشتريات © 2026</p>
+        </div>
+    </div>
+
+    <div class="main-content" id="mainContent">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+            <h1 class="text-lg font-bold text-green-700">📋 جميع الطلبات</h1>
+            
+        </div>
+
+        <div id="errorMessage" class="message error"></div>
+        <div id="successMessage" class="message success"></div>
+
+       <!-- إحصائيات 7 بطاقات -->
+<div class="stats-grid">
+    <div class="stat-card"><div class="stat-icon"><i class="fas fa-file-alt"></i></div><div class="stat-info"><div class="stat-label">إجمالي الطلبات</div><div class="stat-value" id="totalCount">0</div></div></div>
+    <div class="stat-card"><div class="stat-icon"><i class="fas fa-hourglass-half"></i></div><div class="stat-info"><div class="stat-label">⏳ ON Request</div><div class="stat-value" id="onRequestCount">0</div></div></div>
+    <div class="stat-card"><div class="stat-icon"><i class="fas fa-code-branch"></i></div><div class="stat-info"><div class="stat-label">🆕 ON Request New Code</div><div class="stat-value" id="onRequestNewCodeCount">0</div></div></div>
+    <div class="stat-card"><div class="stat-icon"><i class="fas fa-store"></i></div><div class="stat-info"><div class="stat-label">📦 Added to store</div><div class="stat-value" id="addedToStoreCount">0</div></div></div>
+    <div class="stat-card"><div class="stat-icon"><i class="fas fa-check-circle"></i></div><div class="stat-info"><div class="stat-label">✅ Manager Done</div><div class="stat-value" id="managerDoneCount">0</div></div></div>
+    <div class="stat-card"><div class="stat-icon"><i class="fas fa-check-double"></i></div><div class="stat-info"><div class="stat-label">🏭 Oracle Done</div><div class="stat-value" id="oracleCount">0</div></div></div>
+    <div class="stat-card"><div class="stat-icon"><i class="fas fa-times-circle"></i></div><div class="stat-info"><div class="stat-label">❌ مرفوضة</div><div class="stat-value" id="rejectedCount">0</div></div></div>
+</div>
+        <div class="toolbar">
+            <input type="text" id="searchInput" placeholder="🔍 بحث في رقم الطلب، الصنف، كود الصنف، مقدم الطلب..." class="search-input">
+            
+            <div class="filters-row">
+                <div class="filter-group">
+                    <label><i class="fas fa-layer-group"></i> المجموعة</label>
+                    <select id="groupFilter">
+                        <option value="all">جميع المجموعات</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label><i class="fas fa-tag"></i> الحالة</label>
+                    <select id="statusFilter">
+                        <option value="all">جميع الحالات</option>
+                        <option value="ON Request">⏳ ON Request</option>
+                        <option value="ON Request New Code">🆕 ON Request New Code</option>
+                        <option value="Added to store">📦 Added to store</option>
+                        <option value="Manager Done">✅ Manager Done</option>
+                        <option value="Oracle Done">🏭 Oracle Done</option>
+                        <option value="Reject">❌ مرفوض</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-wrapper" id="screenshotArea">
+            <table class="data-table" id="dataTable">
+                <thead>
+                    <tr>
+                        
+                        <th data-sort="id">معرف الطلب <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                        <th data-sort="date">التاريخ <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                        <th data-sort="request">الطلب <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                        <th data-sort="code">كود الصنف <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                        <th data-sort="quantity">الكمية <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                        <th data-sort="stock">الرصيد <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                        <th data-sort="person">مقدم الطلب <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                        <th data-sort="machine">الماكينة <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                        <th data-sort="building">المبنى <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                        <th data-sort="status">الحالة <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                    </thead>
+                <tbody id="requestsTable">
+                    <tr><td colspan="10" class="text-center py-8"><i class="fas fa-spinner fa-spin text-green-600"></i> جاري تحميل البيانات...<\/td></tbody>
+                </table>
+        </div>
+        <div class="footer">آخر تحديث: <span id="lastUpdateTime">—</span></div>
+    </div>
+
+    <div id="detailsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">📋 تفاصيل الطلب</h2>
+                <button onclick="closeModal('detailsModal')" class="close-btn">✕</button>
+            </div>
+            <div id="modalDetails" class="p-4"></div>
+            <div class="modal-footer">
+                <button onclick="takeDetailScreenshot()" class="screenshot-btn-detail">
+                    <i class="fas fa-camera"></i> لقطة شاشة
+                </button>
+               
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabase.js"></script>
+    <script>
+        const supabaseClient = window.AppSupabase || window.supabase;
+        let currentUser = null, allRequests = [], stockCache = [], groupsList = [];
+        let currentSearch = '', currentGroup = 'all', currentStatus = 'all';
+        let currentSort = { column: 'id', direction: 'desc' };
+        let selectedRequests = new Set();
+
+        function formatDate(d) { if (!d) return '—'; if (d.match(/^\d{2}\/\d{2}\/\d{4}$/)) return d; try { let date = new Date(d); if (isNaN(date)) return d; return `${String(date.getDate()).padStart(2,'0')}/${String(date.getMonth()+1).padStart(2,'0')}/${date.getFullYear()}`; } catch(e){ return d; } }
+        
+        function getStock(itemName, code) {
+            if (!stockCache.length) return { exists: false, qty: 0 };
+            let found = stockCache.find(s => s.description && itemName && s.description.toLowerCase().includes(itemName.toLowerCase()));
+            if (!found && code && code !== 'New Code') found = stockCache.find(s => s.item_no && s.item_no.toLowerCase().includes(code.toLowerCase()));
+            return found ? { exists: true, qty: found.total_qty || 0 } : { exists: false, qty: 0 };
+        }
+
+        function getStatusClass(status) {
+            if (status === 'ON Request') return 'status-on-request';
+            if (status === 'Manager Done') return 'status-manager-done';
+            if (status === 'Oracle Done') return 'status-oracle-done';
+            if (status === 'Reject') return 'status-reject';
+            if (status === 'Added to store') return 'status-added-store';
+            return 'status-on-request';
+        }
+
+        function getStatusText(status) {
+            if (status === 'ON Request') return '⏳ ON Request';
+            if (status === 'Manager Done') return '✅ Manager Done';
+            if (status === 'Oracle Done') return '🏭 Oracle Done';
+            if (status === 'Reject') return '❌ مرفوض';
+            if (status === 'Added to store') return '📦 Added to store';
+            return status || '—';
+        }
+
+        function updateSelectedCount() { document.getElementById('selectedCount')?.remove(); }
+
+        function toggleSelectAll() {
+            const checkboxes = document.querySelectorAll('#requestsTable .request-checkbox:not(:disabled)');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => {
+                cb.checked = !allChecked;
+                const id = parseInt(cb.getAttribute('data-id'));
+                if (!allChecked) selectedRequests.add(id);
+                else selectedRequests.delete(id);
+            });
+        }
+
+        function toggleRequestCheckbox(id, checked) {
+            if (checked) selectedRequests.add(id);
+            else selectedRequests.delete(id);
+        }
+
+        function updateSortIcons() {
+            document.querySelectorAll('.data-table th').forEach(th => {
+                const iconSpan = th.querySelector('.sort-icon i');
+                const sortBy = th.getAttribute('data-sort');
+                if (iconSpan && sortBy) {
+                    if (currentSort.column === sortBy) {
+                        iconSpan.className = currentSort.direction === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down';
+                        th.querySelector('.sort-icon').classList.add('active');
+                    } else {
+                        iconSpan.className = 'fas fa-sort';
+                        th.querySelector('.sort-icon').classList.remove('active');
+                    }
+                }
+            });
+        }
+
+        function sortData(data, column, direction) {
+            return [...data].sort((a, b) => {
+                let valA, valB;
+                switch(column) {
+                    case 'id': valA = a.id; valB = b.id; break;
+                    case 'date': valA = a['Request Date']; valB = b['Request Date']; break;
+                    case 'request': valA = a.Request || ''; valB = b.Request || ''; break;
+                    case 'code': valA = a.code || ''; valB = b.code || ''; break;
+                    case 'quantity': valA = a.Quantity || 0; valB = b.Quantity || 0; break;
+                    case 'stock': valA = getStock(a.Request, a.code).qty; valB = getStock(b.Request, b.code).qty; break;
+                    case 'person': valA = a['Requesting person'] || ''; valB = b['Requesting person'] || ''; break;
+                    case 'machine': valA = a.Machine || ''; valB = b.Machine || ''; break;
+                    case 'building': valA = a.Building || ''; valB = b.Building || ''; break;
+                    case 'status': valA = a.Status || ''; valB = b.Status || ''; break;
+                    default: valA = a.id; valB = b.id;
+                }
+                if (direction === 'asc') return valA > valB ? 1 : -1;
+                return valA < valB ? 1 : -1;
+            });
+        }
+
+        async function loadUserProfile() {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) { window.location.href = 'index.html'; return; }
+            const { data: u } = await supabaseClient.from('users').select('*').eq('id', user.id).single();
+            if (u) {
+                currentUser = u;
+                if (u.role !== 'general_manager' && u.role !== 'admin') { alert('صلاحية غير كافية'); window.location.href = 'user-dashboard.html'; return; }
+                document.getElementById('profileName').textContent = u.full_name || u.username;
+                document.getElementById('profileInitial').textContent = (u.full_name || u.username).charAt(0);
+            }
+            await loadData();
+        }
+
+      async function loadData() {
+    try {
+        // جلب جميع الطلبات باستخدام range
+        const [reqRes, stockRes, groupsRes] = await Promise.all([
+            supabaseClient.from('الطلبات').select('*').order('created_at', { ascending: false }).range(0, 10000),
+            supabaseClient.from('combined_data').select('description, item_no, total_qty'),
+            supabaseClient.from('groups').select('id, name').order('name')
+        ]);
+        
+        if (reqRes.error) throw reqRes.error;
+        allRequests = reqRes.data || [];
+        
+        console.log('✅ تم تحميل', allRequests.length, 'طلب من قاعدة البيانات');
+        
+        stockCache = stockRes.data || [];
+        groupsList = groupsRes.data || [];
+        
+        let uniqueGroups = [...new Set(allRequests.map(r => r.group_id).filter(g => g != null))];
+        let groupSelect = document.getElementById('groupFilter');
+        groupSelect.innerHTML = '<option value="all">جميع المجموعات</option>';
+        for (let groupId of uniqueGroups) {
+            let group = groupsList.find(g => g.id == groupId);
+            if (group) groupSelect.innerHTML += `<option value="${groupId}">${group.name}</option>`;
+        }
+        
+        updateStats(); 
+        renderTable();
+        document.getElementById('lastUpdateTime').textContent = new Date().toLocaleString('ar-EG');
+    } catch(e) { 
+        console.error('خطأ:', e); 
+        showError('خطأ في التحميل: ' + e.message); 
+    }
+}async function fetchAllRequests() {
+    let allData = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+    
+    while (hasMore) {
+        const start = page * pageSize;
+        const end = (page + 1) * pageSize - 1;
+        
+        const { data, error } = await supabaseClient
+            .from('الطلبات')
+            .select('*')
+            .range(start, end)
+            .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        if (data.length === 0) {
+            hasMore = false;
+        } else {
+            allData = [...allData, ...data];
+            page++;
+            console.log(`تم تحميل ${allData.length} طلب حتى الآن...`);
+        }
+    }
+    return allData;
+}
+
+async function loadData() {
+    try {
+        // جلب جميع الطلبات باستخدام حلقة
+        const requests = await fetchAllRequests();
+        const [stockRes, groupsRes] = await Promise.all([
+            supabaseClient.from('combined_data').select('description, item_no, total_qty'),
+            supabaseClient.from('groups').select('id, name').order('name')
+        ]);
+        
+        allRequests = requests;
+        stockCache = stockRes.data || [];
+        groupsList = groupsRes.data || [];
+        
+        console.log('✅ تم تحميل', allRequests.length, 'طلب من قاعدة البيانات');
+        
+        let uniqueGroups = [...new Set(allRequests.map(r => r.group_id).filter(g => g != null))];
+        let groupSelect = document.getElementById('groupFilter');
+        groupSelect.innerHTML = '<option value="all">جميع المجموعات</option>';
+        for (let groupId of uniqueGroups) {
+            let group = groupsList.find(g => g.id == groupId);
+            if (group) groupSelect.innerHTML += `<option value="${groupId}">${group.name}</option>`;
+        }
+        
+        updateStats(); 
+        renderTable();
+        document.getElementById('lastUpdateTime').textContent = new Date().toLocaleString('ar-EG');
+    } catch(e) { 
+        console.error('خطأ:', e); 
+        showError('خطأ في التحميل: ' + e.message); 
+    }
+}
+        function updateStats() {
+            // حساب الإجمالي من عدد الطلبات الفعلية
+    const total = allRequests.length;
+    
+    // حساب كل حالة
+    const onRequest = allRequests.filter(r => r.Status === 'ON Request').length;
+    const onRequestNewCode = allRequests.filter(r => r.Status === 'ON Request New Code').length;
+    const addedToStore = allRequests.filter(r => r.Status === 'Added to store').length;
+    const managerDone = allRequests.filter(r => r.Status === 'Manager Done').length;
+    const oracle = allRequests.filter(r => r.Status === 'Oracle Done').length;
+    const rejected = allRequests.filter(r => r.Status === 'Reject').length;
+    
+    // عرض الأعداد
+    document.getElementById('totalCount').textContent = total.toLocaleString();
+    document.getElementById('onRequestCount').textContent = onRequest.toLocaleString();
+    document.getElementById('onRequestNewCodeCount').textContent = onRequestNewCode.toLocaleString();
+    document.getElementById('addedToStoreCount').textContent = addedToStore.toLocaleString();
+    document.getElementById('managerDoneCount').textContent = managerDone.toLocaleString();
+    document.getElementById('oracleCount').textContent = oracle.toLocaleString();
+    document.getElementById('rejectedCount').textContent = rejected.toLocaleString();
+    
+    console.log('📊 الإحصائيات:');
+    console.log('إجمالي:', total);
+    console.log('ON Request:', onRequest);
+    console.log('ON Request New Code:', onRequestNewCode);
+    console.log('Added to store:', addedToStore);
+    console.log('Manager Done:', managerDone);
+    console.log('Oracle Done:', oracle);
+    console.log('Reject:', rejected);
+
+}
+        
+
+        function renderTable() {
+            let filtered = [...allRequests];
+            if (currentGroup !== 'all') filtered = filtered.filter(r => r.group_id == currentGroup);
+            if (currentStatus !== 'all') filtered = filtered.filter(r => r.Status === currentStatus);
+            if (currentSearch) {
+                let s = currentSearch.toLowerCase();
+                filtered = filtered.filter(r => 
+                    (r.id?.toString().includes(s)) || 
+                    (r.Request?.toLowerCase().includes(s)) || 
+                    (r.code?.toLowerCase().includes(s)) ||
+                    (r['Requesting person']?.toLowerCase().includes(s)) ||
+                    (r.Machine?.toLowerCase().includes(s)) ||
+                    (r.Building?.toLowerCase().includes(s))
+                );
+            }
+            filtered = sortData(filtered, currentSort.column, currentSort.direction);
+            
+            let tbody = document.getElementById('requestsTable');
+            if (!filtered.length) { 
+                tbody.innerHTML = '\\<td colspan="11" class="text-center py-8 text-gray-500">لا توجد طلبات<\/td>'; 
+                return; 
+            }
+            
+            let html = '';
+            filtered.forEach((req) => {
+                let stock = getStock(req.Request, req.code);
+                let stockHtml = !stock.exists ? '<span class="stock-value stock-zero">0</span>' : 
+                    `<span class="stock-value ${stock.qty === 0 ? 'stock-zero' : (stock.qty < (req.Quantity||0) ? 'stock-low' : 'stock-high')}">${stock.qty}</span>`;
+                const isChecked = selectedRequests.has(req.id);
+                const statusClass = getStatusClass(req.Status);
+                const statusText = getStatusText(req.Status);
+                
+                html += `
+                    <td class="text-center" style="font-family: monospace;">${req.id}</td>
+                    <td class="text-center">${formatDate(req['Request Date'])}</td>
+                    <td class="break-words" title="${req.Request || '—'}">${req.Request || '—'}</td>
+                    <td style="font-family: monospace; font-size: 11px; text-align: center;">${req.code || '—'}</td>
+                    <td class="text-center">${req.Quantity || '—'}</td>
+                    <td class="text-center">${stockHtml}</td>
+                    <td>${req['Requesting person'] || '—'}</td>
+                    <td>${req.Machine || '—'}</td>
+                    <td>${req.Building || '—'}</td>
+                    <td class="text-center"><span class="status-badge ${statusClass}">${statusText}</span></td>
+                 </tr>`;
+            });
+            tbody.innerHTML = html;
+            updateSortIcons();
+        }
+
+        function handleSort(column) {
+            if (currentSort.column === column) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = column;
+                currentSort.direction = 'asc';
+            }
+            renderTable();
+        }
+
+        async function viewRequest(id) {
+            let req = allRequests.find(r => r.id === id);
+            if (!req) return;
+            let stock = getStock(req.Request, req.code);
+            let groupName = groupsList.find(g => g.id == req.group_id)?.name || '—';
+            
+            let stockHtml = !stock.exists ? 
+                '<div class="bg-yellow-50 p-2 rounded mb-3"><strong>⚠️ الرصيد:</strong> غير موجود</div>' : 
+                `<div class="bg-gray-50 p-3 rounded-lg mb-3">
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold">📦 الرصيد في المخزون:</span>
+                        <span class="${stock.qty === 0 ? 'text-red-600' : (stock.qty < (req.Quantity||0) ? 'text-red-600' : 'text-green-600')} font-bold text-lg">${stock.qty}</span>
+                    </div>
+                    ${stock.qty === 0 ? '<div class="text-red-500 text-sm mt-1">⚠️ غير متوفر</div>' : (stock.qty < (req.Quantity||0) ? '<div class="text-red-500 text-sm mt-1">⚠️ رصيد غير كاف</div>' : '<div class="text-green-500 text-sm mt-1">✅ رصيد كاف</div>')}
+                </div>`;
+            
+            let details = `
+                ${stockHtml}
+                <div class="details-grid">
+                    <div class="detail-item"><div class="detail-label">رقم الطلب</div><div class="detail-value">${req.id}</div></div>
+                    <div class="detail-item"><div class="detail-label">التاريخ</div><div class="detail-value">${formatDate(req['Request Date'])}</div></div>
+                    <div class="detail-item"><div class="detail-label">الصنف</div><div class="detail-value">${req.Request || '—'}</div></div>
+                    <div class="detail-item"><div class="detail-label">كود الصنف</div><div class="detail-value">${req.code || '—'}</div></div>
+                    <div class="detail-item"><div class="detail-label">الكمية المطلوبة</div><div class="detail-value">${req.Quantity || '—'} ${req.Units || ''}</div></div>
+                    <div class="detail-item"><div class="detail-label">الوحدة</div><div class="detail-value">${req.Units || '—'}</div></div>
+                    <div class="detail-item"><div class="detail-label">مقدم الطلب</div><div class="detail-value">${req['Requesting person'] || '—'}</div></div>
+                    <div class="detail-item"><div class="detail-label">الشخص الطالب</div><div class="detail-value">${req['Requested by'] || '—'}</div></div>
+                    <div class="detail-item"><div class="detail-label">الماكينة</div><div class="detail-value">${req.Machine || '—'}</div></div>
+                    <div class="detail-item"><div class="detail-label">المبنى</div><div class="detail-value">${req.Building || '—'}</div></div>
+                    <div class="detail-item"><div class="detail-label">المجموعة</div><div class="detail-value">${groupName}</div></div>
+                    <div class="detail-item"><div class="detail-label">الحالة</div><div class="detail-value">${getStatusText(req.Status)}</div></div>
+                    <div class="detail-item"><div class="detail-label">المشروع</div><div class="detail-value">${req.Project || '—'}</div></div>
+                    <div class="detail-item"><div class="detail-label">الدرجة</div><div class="detail-value">${req.Grade || '—'}</div></div>
+                    <div class="detail-item"><div class="detail-label">العينة</div><div class="detail-value">${req.sample || '—'}</div></div>
+                    ${req.Link ? `<div class="detail-item col-span-2"><div class="detail-label">رابط العينة</div><div class="detail-value"><a href="${req.Link}" target="_blank" class="text-blue-600">${req.Link}</a></div></div>` : ''}
+                    ${req['Notes Reject'] ? `<div class="detail-item col-span-2"><div class="detail-label">ملاحظات الرفض</div><div class="detail-value text-red-600">${req['Notes Reject']}</div></div>` : ''}
+                </div>
+            `;
+            document.getElementById('modalDetails').innerHTML = details;
+            document.getElementById('detailsModal').classList.add('open');
+        }
+        
+        function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+        function showError(m) { let d = document.getElementById('errorMessage'); d.textContent = m; d.style.display = 'block'; setTimeout(() => d.style.display = 'none', 3000); }
+        function showSuccess(m) { let d = document.getElementById('successMessage'); d.textContent = m; d.style.display = 'block'; setTimeout(() => d.style.display = 'none', 3000); }
+        async function logout() { await supabaseClient.auth.signOut(); window.location.href = 'index.html'; }
+        
+        async function takeScreenshot() {
+            const element = document.getElementById('screenshotArea');
+            const originalOverflow = element.style.overflow;
+            element.style.overflow = 'visible';
+            try {
+                const canvas = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff', logging: false, useCORS: true });
+                const link = document.createElement('a');
+                link.download = 'all-requests.png';
+                link.href = canvas.toDataURL();
+                link.click();
+                showSuccess('📸 تم حفظ لقطة الشاشة');
+            } catch (error) {
+                console.error('خطأ:', error);
+                showError('حدث خطأ أثناء التقاط الشاشة');
+            } finally {
+                element.style.overflow = originalOverflow;
+            }
+        }
+        
+        async function takeDetailScreenshot() {
+            const modalContent = document.querySelector('#detailsModal .modal-content');
+            if (!modalContent) { showError('لم يتم العثور على محتوى المودال'); return; }
+            const header = modalContent.querySelector('.modal-header');
+            const footer = modalContent.querySelector('.modal-footer');
+            const closeBtn = modalContent.querySelector('.close-btn');
+            const screenshotBtn = modalContent.querySelector('.screenshot-btn-detail');
+            
+            const originalOverflow = modalContent.style.overflow;
+            const originalMaxHeight = modalContent.style.maxHeight;
+            
+            if (header) header.style.visibility = 'hidden';
+            if (footer) footer.style.visibility = 'hidden';
+            if (closeBtn) closeBtn.style.visibility = 'hidden';
+            if (screenshotBtn) screenshotBtn.style.visibility = 'hidden';
+            modalContent.style.overflow = 'visible';
+            modalContent.style.maxHeight = 'none';
+            
+            try {
+                const canvas = await html2canvas(modalContent, { scale: 2, backgroundColor: '#ffffff', logging: false, useCORS: true });
+                const link = document.createElement('a');
+                const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+                link.download = `request-details-${timestamp}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+                showSuccess('📸 تم حفظ لقطة شاشة التفاصيل');
+            } catch (error) {
+                console.error('خطأ:', error);
+                showError('حدث خطأ أثناء التقاط الشاشة');
+            } finally {
+                if (header) header.style.visibility = 'visible';
+                if (footer) footer.style.visibility = 'visible';
+                if (closeBtn) closeBtn.style.visibility = 'visible';
+                if (screenshotBtn) screenshotBtn.style.visibility = 'visible';
+                modalContent.style.overflow = originalOverflow;
+                modalContent.style.maxHeight = originalMaxHeight;
+            }
+        }
+        
+        function toggleSidebar() { 
+            let s = document.getElementById('sidebar'), m = document.getElementById('mainContent'), o = document.getElementById('overlay'); 
+            if (window.innerWidth <= 768) { s.classList.toggle('mobile-open'); o.classList.toggle('active'); } 
+            else { s.classList.toggle('collapsed'); m.classList.toggle('expanded'); } 
+        }
+        function closeSidebar() { document.getElementById('sidebar').classList.remove('mobile-open'); document.getElementById('overlay').classList.remove('active'); }
+        
+        document.getElementById('searchInput').addEventListener('input', (e) => { currentSearch = e.target.value; renderTable(); });
+        document.getElementById('groupFilter').addEventListener('change', (e) => { currentGroup = e.target.value; renderTable(); });
+        document.getElementById('statusFilter').addEventListener('change', (e) => { currentStatus = e.target.value; renderTable(); });
+        
+        document.querySelectorAll('.data-table th').forEach(th => {
+            th.addEventListener('click', (e) => {
+                if (e.target.closest('.checkbox-col')) return;
+                const sortBy = th.getAttribute('data-sort');
+                if (sortBy) handleSort(sortBy);
+            });
+        });
+        
+        document.addEventListener('click', function(e) { 
+            let s = document.getElementById('sidebar'), t = document.querySelector('.toggle-sidebar-btn'); 
+            if (window.innerWidth <= 768 && s.classList.contains('mobile-open') && !s.contains(e.target) && !t.contains(e.target)) closeSidebar(); 
+        });
+        window.addEventListener('resize', () => { if (window.innerWidth > 768) { document.getElementById('sidebar').classList.remove('mobile-open'); document.getElementById('overlay').classList.remove('active'); } });
+        document.addEventListener('DOMContentLoaded', () => { loadUserProfile(); });
+        
+        window.takeScreenshot = takeScreenshot;
+        window.toggleSelectAll = toggleSelectAll;
+        window.toggleRequestCheckbox = toggleRequestCheckbox;
+        window.takeDetailScreenshot = takeDetailScreenshot;
+    </script>
+</body>
+</html>

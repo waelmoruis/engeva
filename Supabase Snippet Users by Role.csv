@@ -1,0 +1,21 @@
+-- تحديث صلاحية Hany Nageh إلى general_manager
+UPDATE public.users 
+SET role = 'general_manager',
+    department = 'الإدارة العامة'
+WHERE username = 'hany.nageh' OR full_name = 'Hany Nageh';
+موظف (employee) → مدير قسم (dept_manager) → مدير إدارة (general_manager) → مشتريات (procurement)
+kod@1542022PSK
+wael101@gmail.com
+wael.mouris@evapharma.com
+pending_general_manager
+3cee4ff3-20e3-41a7-9bee-023c5df1b273
+hany.nageh@evapharma.com
+3cee4ff3-20e3-41a7-9bee-023c5df1b273
+
+-- مثال: تخلي الموظف 'محمد' مديره هو 'أحمد'
+UPDATE public.users 
+SET manager_id = '3cee4ff3-20e3-41a7-9bee-023c5df1b273'  -- id hany.nageh
+WHERE username = 'Kerollos.ashraf';  -- اسم المستخدم 
+
+
+        function getStatusText(s, l) { if (s === 'Reject') return 'مرفوض'; if (s === 'Manager Done') return 'معتمد'; if (l === 'pending_general_manager') return 'بانتظارك'; if(s === 'Added to storereturn' 'تم الاضافة بالمخزن'; }

@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>إضافة طلب جديد - نظام المخزون</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background: #f0f9f0; 
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+        
+        @media (min-width: 769px) {
+            .sidebar { 
+                position: fixed; 
+                right: 0; 
+                top: 0; 
+                width: 260px; 
+                height: 100%; 
+                background: linear-gradient(180deg, #0f2c3f 0%, #1e4a6b 100%);
+                color: white; 
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                overflow-y: auto;
+            }
+            .main-content { 
+                margin-right: 260px; 
+                padding: 20px; 
+                min-height: 100vh;
+            }
+            .mobile-menu-btn { display: none; }
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar { 
+                position: fixed;
+                top: 0;
+                right: -280px;
+                width: 260px;
+                height: 100%;
+                 background: linear-gradient(180deg, #0f2c3f 0%, #1e4a6b 100%);
+                color: white;
+                z-index: 1000;
+                transition: right 0.3s ease;
+                padding: 20px 15px;
+                overflow-y: auto;
+            }
+            .sidebar.open { right: 0; }
+            .main-content { 
+                margin-right: 0; 
+                padding: 70px 15px 15px 15px; 
+                width: 100%;
+                min-height: 100vh;
+            }
+            .mobile-menu-btn {
+                display: block;
+                position: fixed;
+                top: 15px;
+                right: 15px;
+                z-index: 1001;
+                background: #2f855a;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                padding: 10px 15px;
+                font-size: 20px;
+                cursor: pointer;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            }
+            .overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 999;
+                display: none;
+            }
+            .overlay.open { display: block; }
+        }
+        
+        .sidebar a, .sidebar button {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            color: rgba(255,255,255,0.9);
+            transition: all 0.3s;
+            text-decoration: none;
+            width: 100%;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+        }
+        
+        .sidebar a:hover, .sidebar button:hover {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+        
+        .sidebar a.active {
+            background: rgba(255,255,255,0.3);
+            color: white;
+        }
+        
+        .profile-section {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            margin-bottom: 20px;
+        }
+        
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            margin: 0 auto 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            font-weight: bold;
+            border: 3px solid white;
+        }
+        
+        .form-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+        
+        .form-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2f855a;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f9f0;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #4a5568;
+            font-size: 13px;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-family: 'Cairo', sans-serif;
+            font-size: 14px;
+        }
+        
+        .form-group.full-width {
+            grid-column: span 2;
+        }
+        
+        .btn-save {
+            background: #2f855a;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .btn-cancel {
+            background: #e2e8f0;
+            color: #4a5568;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 2px solid #f0f9f0;
+        }
+        
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            .form-group.full-width {
+                grid-column: span 1;
+            }
+            .form-actions {
+                flex-direction: column;
+            }
+            .btn-save, .btn-cancel {
+                width: 100%;
+            }
+        }
+        
+        .required-star {
+            color: #ef4444;
+        }
+        
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .page-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2f855a;
+        }
+        
+        .hidden-field {
+            display: none;
+        }
+        
+        .searchable-select {
+            position: relative;
+        }
+        
+        .searchable-select input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+        }
+        
+        .searchable-select-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .searchable-select-dropdown.show {
+            display: block;
+        }
+        
+        .searchable-select-item {
+            padding: 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f9f0;
+        }
+        
+        .searchable-select-item:hover {
+            background: #f0f9f0;
+        }
+        
+        .selected-item-info {
+            background: #f0f9f0;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 8px;
+            font-size: 12px;
+            color: #2f855a;
+            border-right: 3px solid #2f855a;
+        }
+        
+        .result-header {
+            background: #f8fafc;
+            padding: 8px 12px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 12px;
+            color: #64748b;
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 10;
+        }
+        
+        .custom-unit-div {
+            display: none;
+        }
+        
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 15px;
+        }
+        .modal.open { display: flex; }
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 90%;
+            padding: 24px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f9f0;
+        }
+        .modal-title { font-size: 20px; font-weight: bold; color: #2f855a; }
+        .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #718096; }
+        .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 15px; border-top: 2px solid #f0f9f0; }
+        
+        .user-info-card {
+            background: #f0f9f0;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-right: 4px solid #2f855a;
+        }
+        .user-info-card .label {
+            font-size: 12px;
+            color: #2f855a;
+            font-weight: 600;
+        }
+        .user-info-card .value {
+            font-size: 14px;
+            font-weight: bold;
+            color: #1e5a3a;
+        }
+    </style>
+</head>
+<body>
+    <div id="overlay" class="overlay" onclick="closeSidebar()"></div>
+    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+
+    <div id="sidebar" class="sidebar">
+        <div class="profile-section">
+            <div class="profile-avatar" id="profileInitial">م</div>
+            <div id="profileName" class="font-bold text-lg">جاري التحميل...</div>
+            <div id="profileRole" class="text-sm text-white/80 mt-1">مستخدم</div>
+        </div>
+        <nav>
+            <a href="user-dashboard.html"><i class="fas fa-home ml-2"></i> الرئيسية</a>
+            <a href="user-inventory.html"><i class="fa-solid fa-warehouse ml-2"></i> المخزون</a>
+            <a href="Request.html"><i class="fas fa-clipboard-list ml-2"></i> جدول الطلبات</a>
+             <a href="StockRecovery.html"><i class="fas fa-clipboard-list ml-2"></i>  استعادة المخزون</a>
+            <a href="user-profile.html"><i class="fas fa-user ml-2"></i> الملف الشخصي</a>
+            <button onclick="logout()"><i class="fas fa-sign-out-alt ml-2"></i> تسجيل خروج</button>
+        </nav>
+        <div class="absolute bottom-0 w-full p-4 text-center text-white/60 text-xs border-t border-white/20">
+            <p>الإدارة الهندسية - برنامج المشتريات © 2026</p>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="page-header">
+            <h1 class="page-title">📝 إضافة طلب جديد</h1>
+            <a href="Request.html" class="text-green-600 hover:text-green-800">
+                <i class="fas fa-arrow-right ml-1"></i> العودة للجدول
+            </a>
+        </div>
+
+        <div id="errorMessage" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4 hidden"></div>
+        <div id="successMessage" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-4 hidden"></div>
+
+        <div class="user-info-card">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <div class="label">👤 مقدم الطلب</div>
+                    <div class="value" id="displayUserName">...</div>
+                </div>
+                <div>
+                    <div class="label">🏢 القسم</div>
+                    <div class="value" id="displayDepartment">...</div>
+                </div>
+                <div>
+                    <div class="label">👨‍💼 المدير المباشر</div>
+                    <div class="value text-blue-600" id="displayManager">...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-card">
+            <div class="form-title">
+                <i class="fas fa-plus-circle ml-2"></i> بيانات الطلب
+            </div>
+            
+            <form id="addRequestForm">
+                <div class="form-grid">
+                    <div class="form-group" id="requestDateGroup">
+                        <label>تاريخ الطلب <span class="required-star">*</span></label>
+                        <input type="text" id="requestDate" required readonly 
+                            class="w-full p-2 border rounded-lg bg-gray-100 cursor-not-allowed">
+                    </div>
+                    
+                    <div class="form-group" id="requestedByGroup">
+                        <label>مقدم الطلب <span class="required-star">*</span></label>
+                        <input type="text" id="requestedBy" required readonly 
+                            class="w-full p-2 border rounded-lg bg-gray-100 cursor-not-allowed">
+                    </div>
+                    
+                    <div class="form-group" id="groupsGroup">
+                        <label>المجموعة</label>
+                        <input type="text" id="groups" readonly 
+                            class="w-full p-2 border rounded-lg bg-gray-100 cursor-not-allowed">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>الشخص الطالب <span class="required-star">*</span></label>
+                        <select id="requestingPerson" required class="w-full p-2 border rounded-lg">
+                            <option value="">اختر اسم الموظف...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>الحالة <span class="required-star">*</span></label>
+                        <select id="status" disabled class="w-full p-2 border rounded-lg bg-gray-100 cursor-not-allowed">
+                            <option value="ON Request" selected>ON Request</option>
+                            <option value="ON Request New Code">ON Request New Code</option>
+                            <option value="Oracle Done">Oracle Done</option>
+                            <option value="Manager Done">Manager Done</option>
+                            <option value="Reject">Reject</option>
+                        </select>
+                        <small class="text-gray-500 text-xs">📌 الحالة الافتراضية: ON Request</small>
+                    </div>
+                    
+                    <div class="form-group full-width">
+                        <label>الطلب (ابحث عن صنف) <span class="required-star">*</span></label>
+                        <div class="searchable-select">
+                            <input type="text" id="requestSearch" placeholder="🔍 ابحث في الوصف..." 
+                                   class="w-full p-2 border rounded-lg" autocomplete="off">
+                            <div id="requestDropdown" class="searchable-select-dropdown"></div>
+                        </div>
+                        <div id="selectedItemInfo" class="selected-item-info hidden"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>الكود</label>
+                        <input type="text" id="code" placeholder="كود الصنف" readonly 
+                               class="w-full p-2 border rounded-lg bg-gray-100 cursor-not-allowed">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>الوحدة <span class="required-star">*</span></label>
+                        <select id="units" class="w-full p-2 border rounded-lg" onchange="onUnitChange()" required>
+                            <option value="">-- اختر الوحدة --</option>
+                            <option value="عدد">عدد</option>
+                            <option value="كجم">كجم</option>
+                            <option value="جرام">جرام</option>
+                            <option value="لتر">لتر</option>
+                            <option value="متر">متر</option>
+                            <option value="علبة">علبة</option>
+                            <option value="باكيت">باكيت</option>
+                            <option value="لفة">لفة</option>
+                            <option value="طن">طن</option>
+                            <option value="__custom__">-- إضافة وحدة جديدة --</option>
+                        </select>
+                    </div>
+                    
+                    <div id="customUnitDiv" class="form-group" style="display: none;">
+                        <label>أدخل الوحدة الجديدة</label>
+                        <input type="text" id="customUnit" class="w-full p-2 border rounded-lg">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>الكمية <span class="required-star">*</span></label>
+                        <input type="number" id="quantity" step="0.01" required placeholder="الكمية">
+                    </div>
+                    
+                    <div class="form-group" id="machineGroup">
+                        <label>الماكينة</label>
+                        <input type="text" id="machine" placeholder="اسم الماكينة أو رقمها">
+                    </div>
+                    
+                    <div class="form-group" id="buildingGroup">
+                        <label>المبنى</label>
+                        <select id="building" class="w-full p-2 border rounded-lg" placeholder="اختر المبنى">
+                            <option value="">اختر المبنى...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" id="gradeGroup">
+                        <label>الدرجة <span class="required-star">*</span></label>
+                        <div class="flex gap-4 mt-1">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="grade" value="High" class="w-4 h-4">
+                                <span class="text-gray-700">🔴 هام</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="grade" value="urgent" class="w-4 h-4">
+                                <span class="text-gray-700">🟠 عاجل</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="grade" value="normal" class="w-4 h-4" checked>
+                                <span class="text-gray-700">🔵 عادي</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" id="projectGroup">
+                        <label>المشروع</label>
+                        <select id="project" class="w-full p-2 border rounded-lg" placeholder="اختر المشروع">
+                            <option value="">اختر المشروع...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" id="prGroup">
+                        <label>PR</label>
+                        <input type="text" id="pr" placeholder="رقم PR">
+                    </div>
+                    
+                    <div class="form-group" id="actionDateGroup">
+                        <label>تاريخ الإجراء</label>
+                        <input type="text" id="actionDate" readonly 
+                            class="w-full p-2 border rounded-lg bg-gray-100 cursor-not-allowed">
+                    </div>
+                    
+                    <div class="form-group" id="actionManagerGroup">
+                        <label>المدير</label>
+                        <input type="text" id="actionManager" placeholder="اسم المدير">
+                    </div>
+                    
+                    <div class="form-group" id="actionOracleGroup">
+                        <label>Oracle</label>
+                        <input type="text" id="actionOracle" placeholder="إجراء Oracle">
+                    </div>
+                    
+                    <div class="form-group" id="emailGroup">
+                        <label>البريد الإلكتروني</label>
+                        <input type="email" id="email" placeholder="example@company.com">
+                    </div>
+                    
+                    <div class="form-group" id="actualQuantityGroup">
+                        <label>الكمية الفعلية</label>
+                        <input type="number" id="actualQuantity" step="0.01" placeholder="الكمية الفعلية">
+                    </div>
+                    
+                    <div class="form-group" id="typeGroup">
+                        <label>النوع</label>
+                        <select id="type" class="w-full p-2 border rounded-lg">
+                            <option value="General">General</option>
+                            <option value="Normal" selected>Normal</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" id="sampleGroup">
+                        <label>العينة (Sample) <span class="required-star">*</span></label>
+                        <select id="sample" class="w-full p-2 border rounded-lg" onchange="onSampleChange()" required>
+                            <option value="">-- اختر --</option>
+                            <option value="يوجد">✅ يوجد</option>
+                            <option value="لا يوجد">❌ لا يوجد</option>
+                            <option value="رابط">🔗 رابط</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="linkGroup" style="display: none;">
+                        <label>رابط عرض السعر</label>
+                        <input type="url" id="link" class="w-full p-2 border rounded-lg" placeholder="https://example.com/price">
+                    </div>
+                    
+                    <div class="form-group" id="priceCalculationGroup">
+                        <label>حساب السعر</label>
+                        <input type="text" id="priceCalculation" class="w-full p-2 border rounded-lg bg-gray-100 cursor-not-allowed" readonly>
+                    </div>
+                    
+                    <div class="form-group" id="newPriceGroup">
+                        <label>السعر الجديد</label>
+                        <input type="number" id="newPrice" step="0.01" class="w-full p-2 border rounded-lg" placeholder="السعر الجديد بعد الحساب">
+                    </div>
+                    
+                    <div class="form-group" id="notesRejectGroup">
+                        <label>ملاحظات الرفض</label>
+                        <input type="text" id="notesReject" placeholder="سبب الرفض إن وجد">
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn-save">
+                        <i class="fas fa-save ml-1"></i> حفظ الطلب
+                    </button>
+                    <button type="button" class="btn-cancel" onclick="window.location.href='Request.html'">
+                        <i class="fas fa-times ml-1"></i> إلغاء
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="newEmployeeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">➕ إضافة موظف جديد</h2>
+                <button onclick="closeEmployeeModal()" class="close-btn">✕</button>
+            </div>
+            <form id="newEmployeeForm">
+                <div class="form-group">
+                    <label>الاسم (عربي) <span class="required-star">*</span></label>
+                    <input type="text" id="newEmployeeName" required class="w-full p-2 border rounded-lg">
+                </div>
+                <div class="form-group">
+                    <label>القسم</label>
+                    <input type="text" id="newEmployeeDepartment" class="w-full p-2 border rounded-lg">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" onclick="saveNewEmployee()" class="btn-save">💾 حفظ</button>
+                    <button type="button" onclick="closeEmployeeModal()" class="btn-cancel">❌ إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabase.js"></script>
+    <script>
+        const supabaseClient = window.AppSupabase || window.supabase;
+        let currentUser = null;
+        let currentUserWithManager = null;
+        let itemsList = [];
+        let selectedItem = null;
+        let buildingsList = [];
+        let projectsList = [];
+        
+        const hiddenFields = {
+            requestDate: true, requestedBy: true, groups: false, machine: false,
+            building: false, grade: false, pr: true, actionDate: true,
+            actionManager: true, actionOracle: true, actualQuantity: true,
+            type: false, priceCalculation: false, newPrice: false,
+            notesReject: true, email: true
+        };
+        
+        function applyHiddenFields() {
+            if (hiddenFields.requestDate) document.getElementById('requestDateGroup')?.classList.add('hidden-field');
+            if (hiddenFields.requestedBy) document.getElementById('requestedByGroup')?.classList.add('hidden-field');
+            if (hiddenFields.groups) document.getElementById('groupsGroup')?.classList.add('hidden-field');
+            if (hiddenFields.machine) document.getElementById('machineGroup')?.classList.add('hidden-field');
+            if (hiddenFields.building) document.getElementById('buildingGroup')?.classList.add('hidden-field');
+            if (hiddenFields.grade) document.getElementById('gradeGroup')?.classList.add('hidden-field');
+            if (hiddenFields.pr) document.getElementById('prGroup')?.classList.add('hidden-field');
+            if (hiddenFields.actionDate) document.getElementById('actionDateGroup')?.classList.add('hidden-field');
+            if (hiddenFields.actionManager) document.getElementById('actionManagerGroup')?.classList.add('hidden-field');
+            if (hiddenFields.actionOracle) document.getElementById('actionOracleGroup')?.classList.add('hidden-field');
+            if (hiddenFields.actualQuantity) document.getElementById('actualQuantityGroup')?.classList.add('hidden-field');
+            if (hiddenFields.type) document.getElementById('typeGroup')?.classList.add('hidden-field');
+            if (hiddenFields.priceCalculation) document.getElementById('priceCalculationGroup')?.classList.add('hidden-field');
+            if (hiddenFields.newPrice) document.getElementById('newPriceGroup')?.classList.add('hidden-field');
+            if (hiddenFields.notesReject) document.getElementById('notesRejectGroup')?.classList.add('hidden-field');
+            if (hiddenFields.email) document.getElementById('emailGroup')?.classList.add('hidden-field');
+        }
+        
+        function formatToDMY(date) {
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${day}/${month}/${year}`;
+        }
+
+        function setTodayDate() {
+            const today = new Date();
+            const todayFormatted = formatToDMY(today);
+            const requestDateInput = document.getElementById('requestDate');
+            if (requestDateInput) requestDateInput.value = todayFormatted;
+            const actionDateInput = document.getElementById('actionDate');
+            if (actionDateInput) actionDateInput.value = todayFormatted;
+        }
+        
+        async function loadItems() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('combined_data')
+                    .select('*')
+                    .order('description');
+                if(error) throw error;
+                itemsList = data || [];
+                console.log('تم تحميل', itemsList.length, 'صنف');
+            } catch(error) {
+                console.error('خطأ في تحميل الأصناف:', error);
+            }
+        }
+        
+        async function searchItems(searchTerm) {
+            const dropdown = document.getElementById('requestDropdown');
+            if(!searchTerm || searchTerm.length < 1) {
+                dropdown.innerHTML = '';
+                dropdown.classList.remove('show');
+                return [];
+            }
+            
+            try {
+                const { data, error } = await supabaseClient
+                    .from('combined_data')
+                    .select('*')
+                    .ilike('description', `%${searchTerm}%`)
+                    .order('description')
+                    .limit(50);
+                
+                if(error) throw error;
+                
+                const dropdownHTML = `
+                    <div class="result-header">
+                        <i class="fas fa-list ml-1"></i> نتائج البحث لـ "${searchTerm}"
+                    </div>
+                    ${data && data.length > 0 ? data.map(item => `
+                        <div class="searchable-select-item" onclick='selectItem(${JSON.stringify(item)})'>
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-green-700">${item.description || 'لا يوجد وصف'}</span>
+                                <span class="text-xs ${parseFloat(item.total_qty) > 0 ? 'text-green-600' : 'text-red-500'}">
+                                    📦 ${item.total_qty || 0}
+                                </span>
+                            </div>
+                            <div class="text-xs text-gray-500 mt-1">
+                                🔖 ${item.item_no} | ${item.units ? `📏 ${item.units}` : ''}
+                            </div>
+                        </div>
+                    `).join('') : ''}
+                    <div class="searchable-select-item" style="border-top: 2px dashed #e2e8f0; margin-top: 5px;" onclick='createNewItem("${searchTerm}")'>
+                        <div class="flex items-center gap-2 text-blue-600">
+                            <i class="fas fa-plus-circle"></i>
+                            <span class="font-bold">➕ إضافة صنف جديد: "${searchTerm}"</span>
+                        </div>
+                    </div>
+                `;
+                dropdown.innerHTML = dropdownHTML;
+                dropdown.classList.add('show');
+                return data;
+            } catch(error) {
+                console.error('خطأ في البحث:', error);
+                return [];
+            }
+        }
+        
+        function selectItem(item) {
+            selectedItem = item;
+            document.getElementById('requestSearch').value = item.description || '';
+            document.getElementById('code').value = item.item_no;
+            const statusSelect = document.getElementById('status');
+            if(statusSelect) statusSelect.value = 'ON Request';
+            if(item.units) {
+                const unitsSelect = document.getElementById('units');
+                if(Array.from(unitsSelect.options).some(opt => opt.value === item.units)) {
+                    unitsSelect.value = item.units;
+                }
+            }
+            const infoDiv = document.getElementById('selectedItemInfo');
+            infoDiv.innerHTML = `<div class="flex items-center gap-2"><i class="fas fa-check-circle text-green-600"></i><span class="font-bold text-green-600">✅ صنف موجود في المخزون</span></div>
+                <div class="text-sm text-gray-700 mt-1">${item.description || item.item_no}</div>
+                <div class="grid grid-cols-2 gap-2 text-xs mt-2">
+                    <div class="text-gray-600">🔖 الكود: ${item.item_no}</div>
+                    <div class="text-gray-600">📦 المتوفر: ${item.total_qty || 0}</div>
+                    <div class="text-gray-600">📏 الوحدة: ${item.units || 'غير محددة'}</div>
+                </div>`;
+            infoDiv.classList.remove('hidden');
+            document.getElementById('requestDropdown').classList.remove('show');
+        }
+        
+        function createNewItem(searchTerm) {
+            selectedItem = {
+                id: null,
+                item_no: 'New Code',
+                description: searchTerm,
+                total_qty: 0,
+                units: '',
+                locator: ''
+            };
+            document.getElementById('requestSearch').value = searchTerm;
+            document.getElementById('code').value = selectedItem.item_no;
+            const statusSelect = document.getElementById('status');
+            if(statusSelect) statusSelect.value = 'ON Request New Code';
+            const infoDiv = document.getElementById('selectedItemInfo');
+            infoDiv.innerHTML = `<div class="flex items-center gap-2"><i class="fas fa-plus-circle text-blue-600"></i>
+                <span class="font-bold text-blue-600">⚠️ صنف جديد غير موجود في المخزون</span></div>
+                <div class="text-sm text-gray-700 mt-1">${searchTerm}</div>
+                <div class="text-xs text-gray-500 mt-1">🔖 الكود: New Code</div>`;
+            infoDiv.classList.remove('hidden');
+            document.getElementById('requestDropdown').classList.remove('show');
+            alert(`✅ تم إضافة طلب لصنف جديد: "${searchTerm}"\n📌 نوع الطلب: ON Request New Code`);
+        }
+        
+        async function loadEmployees() {
+            try {
+                const { data: employees, error } = await supabaseClient.from('employees').select('*');
+                if(error) throw error;
+                const employeesSelect = document.getElementById('requestingPerson');
+                if(!employeesSelect) return;
+                employeesSelect.innerHTML = '<option value="">اختر اسم الموظف...</option>';
+                if(employees && employees.length > 0) {
+                    employees.forEach(emp => {
+                        const option = document.createElement('option');
+                        option.value = emp.id;
+                        const empName = emp.name || emp.name_ar || `موظف ${emp.id}`;
+                        option.textContent = `${empName}${emp.department ? ` (${emp.department})` : ''}`;
+                        employeesSelect.appendChild(option);
+                    });
+                }
+                const addOption = document.createElement('option');
+                addOption.value = "__new__";
+                addOption.textContent = "➕ إضافة موظف جديد";
+                addOption.style.color = "#2f855a";
+                employeesSelect.appendChild(addOption);
+            } catch(error) {
+                console.error('❌ خطأ:', error);
+            }
+        }
+        
+        function onSampleChange() {
+            const sampleSelect = document.getElementById('sample');
+            const linkGroup = document.getElementById('linkGroup');
+            if (sampleSelect.value === 'رابط') {
+                linkGroup.style.display = 'block';
+            } else {
+                linkGroup.style.display = 'none';
+                document.getElementById('link').value = '';
+            }
+        }
+        
+        async function loadBuildings() {
+            try {
+                const { data: buildings, error } = await supabaseClient.from('buildings').select('id, name').order('name');
+                if(error) throw error;
+                const buildingSelect = document.getElementById('building');
+                if(!buildingSelect) return;
+                buildingSelect.innerHTML = '<option value="">اختر المبنى...</option>';
+                if(buildings && buildings.length > 0) {
+                    buildings.forEach(building => {
+                        const option = document.createElement('option');
+                        option.value = building.id;
+                        option.textContent = building.name;
+                        buildingSelect.appendChild(option);
+                    });
+                }
+                const addOption = document.createElement('option');
+                addOption.value = "__new_building__";
+                addOption.textContent = "➕ إضافة مبنى جديد";
+                buildingSelect.appendChild(addOption);
+            } catch(error) {
+                console.error('❌ خطأ:', error);
+            }
+        }
+        
+        async function loadProjects() {
+            try {
+                const { data: projects, error } = await supabaseClient.from('projects').select('id, name').order('name');
+                if(error) throw error;
+                const projectSelect = document.getElementById('project');
+                if(!projectSelect) return;
+                projectSelect.innerHTML = '<option value="">اختر المشروع...</option>';
+                if(projects && projects.length > 0) {
+                    projects.forEach(project => {
+                        const option = document.createElement('option');
+                        option.value = project.id;
+                        option.textContent = project.name;
+                        projectSelect.appendChild(option);
+                    });
+                }
+                const addOption = document.createElement('option');
+                addOption.value = "__new_project__";
+                addOption.textContent = "➕ إضافة مشروع جديد";
+                projectSelect.appendChild(addOption);
+            } catch(error) {
+                console.error('❌ خطأ:', error);
+            }
+        }
+
+        function onUnitChange() {
+            const unitsSelect = document.getElementById('units');
+            const customUnitDiv = document.getElementById('customUnitDiv');
+            if(unitsSelect.value === '__custom__'){
+                customUnitDiv.style.display = 'block';
+            } else {
+                customUnitDiv.style.display = 'none';
+            }
+        }
+        
+        function getSelectedGrade() {
+            const selectedRadio = document.querySelector('input[name="grade"]:checked');
+            return selectedRadio ? selectedRadio.value : 'normal';
+        }
+        
+        function onRequestingPersonChange() {
+            const select = document.getElementById('requestingPerson');
+            if(select.value === "__new__"){
+                document.getElementById('newEmployeeModal').classList.add('open');
+                select.value = "";
+            }
+        }
+        
+        function onBuildingChange() {
+            const select = document.getElementById('building');
+            if(select.value === "__new_building__"){
+                const newBuildingName = prompt('أدخل اسم المبنى الجديد:');
+                if(newBuildingName && newBuildingName.trim()){
+                    addNewBuilding(newBuildingName.trim());
+                }
+                select.value = "";
+            }
+        }
+        
+        function onProjectChange() {
+            const select = document.getElementById('project');
+            if(select.value === "__new_project__"){
+                const newProjectName = prompt('أدخل اسم المشروع الجديد:');
+                if(newProjectName && newProjectName.trim()){
+                    addNewProject(newProjectName.trim());
+                }
+                select.value = "";
+            }
+        }
+        
+        async function addNewBuilding(name) {
+            try {
+                const { error } = await supabaseClient.from('buildings').insert([{ name: name }]);
+                if(error) throw error;
+                alert(`✅ تم إضافة المبنى "${name}" بنجاح`);
+                await loadBuildings();
+            } catch(error) {
+                alert('❌ فشل إضافة المبنى: ' + error.message);
+            }
+        }
+        
+        async function addNewProject(name) {
+            try {
+                const { error } = await supabaseClient.from('projects').insert([{ name: name }]);
+                if(error) throw error;
+                alert(`✅ تم إضافة المشروع "${name}" بنجاح`);
+                await loadProjects();
+            } catch(error) {
+                alert('❌ فشل إضافة المشروع: ' + error.message);
+            }
+        }
+        
+        function closeEmployeeModal() {
+            document.getElementById('newEmployeeModal').classList.remove('open');
+            document.getElementById('newEmployeeForm').reset();
+        }
+        
+        async function saveNewEmployee() {
+            const nameAr = document.getElementById('newEmployeeName').value.trim();
+            const department = document.getElementById('newEmployeeDepartment').value.trim();
+            if(!nameAr){
+                alert('❌ الرجاء إدخال اسم الموظف');
+                return;
+            }
+            try {
+                const { error } = await supabaseClient.from('employees').insert([{
+                    name_ar: nameAr,
+                    name: nameAr,
+                    department: department || null,
+                    is_active: true
+                }]);
+                if(error) throw error;
+                alert('✅ تم إضافة الموظف بنجاح');
+                closeEmployeeModal();
+                await loadEmployees();
+            } catch(error) {
+                alert('❌ فشل إضافة الموظف: ' + error.message);
+            }
+        }
+        
+        function getSelectedEmployeeName() {
+            const select = document.getElementById('requestingPerson');
+            const selectedOption = select.options[select.selectedIndex];
+            if(selectedOption && selectedOption.value && selectedOption.value !== "__new__"){
+                return selectedOption.textContent.split(' (')[0];
+            }
+            return null;
+        }
+        
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('overlay').classList.toggle('open');
+        }
+        
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.remove('open');
+            document.getElementById('overlay').classList.remove('open');
+        }
+        
+        function calculatePrice() {
+            const newPriceInput = document.getElementById('newPrice');
+            const priceCalculationInput = document.getElementById('priceCalculation');
+            let newPrice = parseFloat(newPriceInput.value);
+            if(!isNaN(newPrice) && newPrice > 0) {
+                const calculatedPrice = newPrice + (newPrice * 0.20);
+                priceCalculationInput.value = calculatedPrice.toFixed(2);
+            } else {
+                priceCalculationInput.value = '';
+            }
+        }
+        
+        if(document.getElementById('newPrice')) {
+            document.getElementById('newPrice').addEventListener('input', calculatePrice);
+        }
+        
+        // ========== استقبال البيانات من صفحة المخزون ==========
+        function checkForInventoryData() {
+            const data = sessionStorage.getItem('newRequestData');
+            if (data) {
+                try {
+                    const inventoryData = JSON.parse(data);
+                    console.log('📦 استلام بيانات من المخزون:', inventoryData);
+                    
+                    if (inventoryData.source === 'inventory') {
+                        // تعبئة حقل البحث بالوصف
+                        const searchInput = document.getElementById('requestSearch');
+                        const codeInput = document.getElementById('code');
+                        
+                        if (searchInput) {
+                            searchInput.value = inventoryData.description;
+                        }
+                        
+                        if (codeInput) {
+                            codeInput.value = inventoryData.code || inventoryData.item_no;
+                        }
+                        
+                        // تعيين الصنف المختار
+                        selectedItem = {
+                            id: null,
+                            item_no: inventoryData.code || inventoryData.item_no,
+                            description: inventoryData.description,
+                            total_qty: 0,
+                            units: '',
+                            locator: ''
+                        };
+                        
+                        // تحديث واجهة المستخدم
+                        const infoDiv = document.getElementById('selectedItemInfo');
+                        if (infoDiv) {
+                            infoDiv.innerHTML = `<div class="flex items-center gap-2"><i class="fas fa-check-circle text-green-600"></i>
+                                <span class="font-bold text-green-600">✅ تم جلب البيانات من المخزون</span></div>
+                                <div class="text-sm text-gray-700 mt-1">${inventoryData.description}</div>
+                                <div class="grid grid-cols-2 gap-2 text-xs mt-2">
+                                    <div class="text-gray-600">🔖 الكود: ${inventoryData.code || inventoryData.item_no}</div>
+                                    <div class="text-gray-600">📦 المصدر: المخزون</div>
+                                </div>`;
+                            infoDiv.classList.remove('hidden');
+                        }
+                        
+                        // تغيير الحالة إلى ON Request
+                        const statusSelect = document.getElementById('status');
+                        if (statusSelect) {
+                            statusSelect.value = 'ON Request';
+                        }
+                        
+                        // إغلاق القائمة المنسدلة
+                        const dropdown = document.getElementById('requestDropdown');
+                        if (dropdown) {
+                            dropdown.classList.remove('show');
+                        }
+                        
+                        // مسح البيانات بعد الاستخدام
+                        sessionStorage.removeItem('newRequestData');
+                        
+                        // إظهار رسالة نجاح
+                        setTimeout(() => {
+                            const successDiv = document.getElementById('successMessage');
+                            if (successDiv) {
+                                successDiv.textContent = '✅ تم جلب بيانات الصنف من المخزون بنجاح';
+                                successDiv.classList.remove('hidden');
+                                setTimeout(() => {
+                                    successDiv.classList.add('hidden');
+                                }, 3000);
+                            }
+                        }, 500);
+                    }
+                } catch(e) {
+                    console.error('خطأ في قراءة بيانات المخزون:', e);
+                }
+            }
+        }
+        
+        // التحقق من وجود بيانات من صفحة استعادة المخزون
+        function checkForPurchaseOrderData() {
+            const data = sessionStorage.getItem('stockRecoveryData');
+            if (data) {
+                try {
+                    const purchaseData = JSON.parse(data);
+                    console.log('📦 استلام بيانات من استعادة المخزون:', purchaseData);
+                    
+                    if (purchaseData.source === 'inventory') {
+                        const searchInput = document.getElementById('requestSearch');
+                        const codeInput = document.getElementById('code');
+                        
+                        if (searchInput) searchInput.value = purchaseData.description;
+                        if (codeInput) codeInput.value = purchaseData.item_no;
+                        
+                        selectedItem = {
+                            id: null,
+                            item_no: purchaseData.item_no,
+                            description: purchaseData.description,
+                            total_qty: purchaseData.current_qty || 0,
+                            units: '',
+                            locator: ''
+                        };
+                        
+                        const infoDiv = document.getElementById('selectedItemInfo');
+                        if (infoDiv) {
+                            infoDiv.innerHTML = `<div class="flex items-center gap-2"><i class="fas fa-plus-circle text-blue-600"></i>
+                                <span class="font-bold text-blue-600">⚠️ صنف من استعادة المخزون</span></div>
+                                <div class="text-sm text-gray-700 mt-1">${purchaseData.description}</div>
+                                <div class="grid grid-cols-2 gap-2 text-xs mt-2">
+                                    <div class="text-gray-600">🔖 الكود: ${purchaseData.item_no}</div>
+                                    <div class="text-gray-600">📦 الكمية الحالية: ${purchaseData.current_qty || 0}</div>
+                                </div>`;
+                            infoDiv.classList.remove('hidden');
+                        }
+                        
+                        const statusSelect = document.getElementById('status');
+                        if (statusSelect) statusSelect.value = 'ON Request New Code';
+                        
+                        sessionStorage.removeItem('stockRecoveryData');
+                    }
+                } catch(e) {
+                    console.error('خطأ في قراءة البيانات:', e);
+                }
+            }
+        }
+        
+        document.getElementById('addRequestForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if(!selectedItem){
+                alert('❌ الرجاء اختيار صنف من القائمة أو إضافة صنف جديد');
+                return;
+            }
+            
+            let units = document.getElementById('units').value;
+            if(units === '__custom__'){
+                units = document.getElementById('customUnit').value.trim();
+                if(!units){
+                    alert('❌ الرجاء إدخال اسم الوحدة');
+                    return;
+                }
+            }
+            
+            const buildingSelect = document.getElementById('building');
+            const buildingName = buildingSelect.options[buildingSelect.selectedIndex]?.text;
+            const finalBuilding = (buildingName && buildingName !== 'اختر المبنى...') ? buildingName : null;
+            
+            const projectSelect = document.getElementById('project');
+            const projectName = projectSelect.options[projectSelect.selectedIndex]?.text;
+            const finalProject = (projectName && projectName !== 'اختر المشروع...') ? projectName : null;
+            
+            const requestingPerson = getSelectedEmployeeName();
+            if(!requestingPerson){
+                alert('❌ الرجاء اختيار الشخص الطالب');
+                return;
+            }
+            
+            let status = 'ON Request';
+            if(!selectedItem.id) {
+                status = 'ON Request New Code';
+            }
+            
+            let approvalLevel = 'pending_dept_manager';
+            let currentApproverId = null;
+            
+            if(currentUserWithManager && currentUserWithManager.manager) {
+                currentApproverId = currentUserWithManager.manager.id;
+                if(currentUserWithManager.manager.role === 'dept_manager') {
+                    approvalLevel = 'pending_dept_manager';
+                } else if(currentUserWithManager.manager.role === 'general_manager') {
+                    approvalLevel = 'pending_general_manager';
+                }
+            }
+            
+            const formData = {
+                'Request Date': document.getElementById('requestDate').value,
+                'Requested by': document.getElementById('requestedBy').value,
+                'groups': document.getElementById('groups').value,
+                'group_id': currentUser?.group_id,
+                'Requesting person': requestingPerson,
+                'Request': selectedItem.description || document.getElementById('requestSearch').value,
+                'code': selectedItem.item_no,
+                'Units': units,
+                'Quantity': parseFloat(document.getElementById('quantity').value) || null,
+                'Machine': document.getElementById('machine').value || null,
+                'Building': finalBuilding,
+                'Grade': getSelectedGrade(),
+                'Project': finalProject,
+                'Status': status,
+                'pr': document.getElementById('pr').value || null,
+                'Action Date': document.getElementById('actionDate').value || null,
+                'Action Manager': document.getElementById('actionManager').value || null,
+                'Action Oracle': document.getElementById('actionOracle').value || null,
+                'Email': document.getElementById('email').value || null,
+                'Actual Quantity': parseFloat(document.getElementById('actualQuantity').value) || null,
+                'Type': document.getElementById('type').value || null,
+                'Price calculation': document.getElementById('priceCalculation').value || null,
+                'New Price': parseFloat(document.getElementById('newPrice').value) || null,
+                'sample': document.getElementById('sample').value || null,
+                'Link': document.getElementById('link').value || null,
+                'Notes Reject': document.getElementById('notesReject').value || null,
+                'submitted_by': currentUser?.id,
+                'current_approver_id': currentApproverId,
+                'approval_level': approvalLevel,
+                'department': currentUser?.department
+            };
+            
+            console.log('📦 البيانات المرسلة - group_id:', formData.group_id);
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
+            
+            try {
+                const { error } = await supabaseClient.from('الطلبات').insert([formData]);
+                if(error) throw error;
+                
+                document.getElementById('successMessage').textContent = '✅ تم إضافة الطلب بنجاح، في انتظار موافقة المدير';
+                document.getElementById('successMessage').classList.remove('hidden');
+                
+                setTimeout(() => {
+                    window.location.href = 'Request.html';
+                }, 2000);
+                
+            } catch(error) {
+                document.getElementById('errorMessage').textContent = '❌ خطأ: ' + error.message;
+                document.getElementById('errorMessage').classList.remove('hidden');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-save"></i> حفظ الطلب';
+                setTimeout(() => {
+                    document.getElementById('errorMessage').classList.add('hidden');
+                }, 5000);
+            }
+        });
+        
+        let searchTimeout;
+        const requestSearch = document.getElementById('requestSearch');
+        if(requestSearch) {
+            requestSearch.addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    searchItems(e.target.value);
+                }, 300);
+            });
+        }
+        
+        document.addEventListener('click', function(e) {
+            const dropdown = document.getElementById('requestDropdown');
+            const searchInput = document.getElementById('requestSearch');
+            if(dropdown && !dropdown.contains(e.target) && e.target !== searchInput) {
+                dropdown.classList.remove('show');
+            }
+        });
+        
+        async function loadUserProfile() {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if(!user){ 
+                window.location.href = 'index.html'; 
+                return; 
+            }
+            
+            console.log('🔍 جاري تحميل بيانات المستخدم:', user.id);
+            
+            const { data: userData, error: userError } = await supabaseClient
+                .from('users')
+                .select('*, groups:group_id(id, name)')
+                .eq('id', user.id)
+                .single();
+            
+            if(userError) {
+                console.error('❌ خطأ:', userError);
+                return;
+            }
+            
+            console.log('✅ بيانات المستخدم - group_id:', userData.group_id);
+            
+            let managerData = null;
+            if(userData.manager_id) {
+                try {
+                    const { data: manager, error: managerError } = await supabaseClient
+                        .from('users')
+                        .select('id, full_name, username, role, department, status')
+                        .eq('id', userData.manager_id);
+                    
+                    if(!managerError && manager && manager.length > 0) {
+                        managerData = manager[0];
+                    }
+                } catch(e) {
+                    console.error('❌ استثناء:', e);
+                }
+            }
+            
+            currentUser = userData;
+            currentUserWithManager = { ...userData, manager: managerData };
+            
+            const displayName = userData.full_name || userData.username;
+            document.getElementById('profileName').textContent = displayName;
+            document.getElementById('profileInitial').textContent = displayName.charAt(0);
+            document.getElementById('profileRole').textContent = userData.role === 'admin' ? 'مدير' : 'مستخدم';
+            document.getElementById('requestedBy').value = displayName;
+            document.getElementById('email').value = userData.email || '';
+            
+            const groupName = userData.groups?.name || (userData.group_id ? `مجموعة ${userData.group_id}` : 'لا توجد مجموعة');
+            document.getElementById('groups').value = groupName;
+            
+            document.getElementById('displayUserName').textContent = displayName;
+            document.getElementById('displayDepartment').textContent = userData.department || 'غير محدد';
+            
+            if(managerData) {
+                let roleText = '';
+                if(managerData.role === 'dept_manager') {
+                    roleText = 'مدير قسم';
+                } else if(managerData.role === 'general_manager') {
+                    roleText = 'مدير إدارة';
+                } else {
+                    roleText = managerData.role;
+                }
+                document.getElementById('displayManager').textContent = `${managerData.full_name} (${roleText})`;
+            } else {
+                document.getElementById('displayManager').textContent = 'لا يوجد مدير مباشر';
+            }
+        }
+        
+        async function logout() {
+            await supabaseClient.auth.signOut();
+            window.location.href = 'index.html';
+        }
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            setTodayDate();
+            await loadUserProfile();
+            await loadEmployees();
+            await loadBuildings();
+            await loadProjects();
+            await loadItems();
+            applyHiddenFields();
+            closeSidebar();
+            
+            // استقبال البيانات من المصادر المختلفة
+            checkForInventoryData();      // من صفحة المخزون
+            checkForPurchaseOrderData();  // من صفحة استعادة المخزون
+            
+            const requestingPerson = document.getElementById('requestingPerson');
+            const building = document.getElementById('building');
+            const project = document.getElementById('project');
+            if(requestingPerson) requestingPerson.addEventListener('change', onRequestingPersonChange);
+            if(building) building.addEventListener('change', onBuildingChange);
+            if(project) project.addEventListener('change', onProjectChange);
+        });
+        // استقبال البيانات من استعادة المخزون
+function checkForStockRecoveryData() {
+    const data = sessionStorage.getItem('newRequestData');
+    if (data) {
+        try {
+            const recoveryData = JSON.parse(data);
+            if (recoveryData.source === 'stock_recovery') {
+                // تعبئة حقل البحث
+                const searchInput = document.getElementById('requestSearch');
+                const codeInput = document.getElementById('code');
+                
+                if (searchInput) searchInput.value = recoveryData.description;
+                if (codeInput) codeInput.value = recoveryData.code;
+                
+                // تعيين الصنف المختار
+                selectedItem = {
+                    id: null,
+                    item_no: recoveryData.code,
+                    description: recoveryData.description,
+                    total_qty: 0,
+                    units: '',
+                    locator: ''
+                };
+                
+                // تحديث واجهة المستخدم
+                const infoDiv = document.getElementById('selectedItemInfo');
+                if (infoDiv) {
+                    infoDiv.innerHTML = `<div class="flex items-center gap-2"><i class="fas fa-plus-circle text-blue-600"></i>
+                        <span class="font-bold text-blue-600">⚠️ صنف من استعادة المخزون</span></div>
+                        <div class="text-sm text-gray-700 mt-1">${recoveryData.description}</div>
+                        <div class="text-xs text-gray-500 mt-1">🔖 الكود: ${recoveryData.code}</div>`;
+                    infoDiv.classList.remove('hidden');
+                }
+                
+                // تغيير الحالة
+                const statusSelect = document.getElementById('status');
+                if (statusSelect) statusSelect.value = 'ON Request New Code';
+                
+                // مسح البيانات
+                sessionStorage.removeItem('newRequestData');
+            }
+        } catch(e) {
+            console.error('خطأ:', e);
+        }
+    }
+}
+
+// استدعاء الدالة في DOMContentLoaded
+document.addEventListener('DOMContentLoaded', () => {
+    // ... الكود الموجود ...
+    checkForStockRecoveryData();
+});
+    </script>
+    <script src="js/chat-widget.js"></script>
+</body>
+</html>

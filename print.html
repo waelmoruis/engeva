@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إذن صرف من المخزن</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: #e2e8f0;
+            padding: 30px;
+            direction: rtl;
+        }
+        
+        /* ورقة الطباعة */
+        .print-paper {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            border-radius: 4px;
+            padding: 20px 25px;
+            position: relative;
+        }
+        
+        /* الترويسة */
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #1e4a6b;
+            padding-bottom: 15px;
+        }
+        
+        .company-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1e4a6b;
+            margin-bottom: 5px;
+        }
+        
+        .company-info {
+            font-size: 12px;
+            color: #4a5568;
+        }
+        
+        .doc-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #c53030;
+            margin: 10px 0;
+            text-decoration: underline;
+        }
+        
+        /* مسلسل المستند */
+        .doc-number {
+            position: absolute;
+            top: 20px;
+            left: 25px;
+            font-size: 12px;
+            font-weight: bold;
+            border: 1px solid #000;
+            padding: 5px 10px;
+            background: #f7fafc;
+        }
+        
+        /* إيقاف فارما */
+        .stop-pharma {
+            text-align: center;
+            margin: 15px 0;
+            font-weight: bold;
+            font-size: 18px;
+            color: #c53030;
+            letter-spacing: 3px;
+        }
+        
+        /* جدول البيانات الرئيسي */
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 13px;
+        }
+        
+        .info-table td, .info-table th {
+            border: 1px solid #000;
+            padding: 8px 10px;
+            vertical-align: top;
+        }
+        
+        .info-table th {
+            background: #f1f5f9;
+            font-weight: 700;
+            width: 130px;
+        }
+        
+        /* جدول الأصناف */
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 13px;
+        }
+        
+        .items-table th, .items-table td {
+            border: 1px solid #000;
+            padding: 10px 8px;
+            text-align: center;
+        }
+        
+        .items-table th {
+            background: #e2e8f0;
+            font-weight: 700;
+        }
+        
+        /* قسم التوقيعات */
+        .signatures {
+            margin-top: 30px;
+            border-top: 1px dashed #cbd5e0;
+            padding-top: 20px;
+        }
+        
+        .signatures-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .signatures-table td {
+            padding: 15px 10px;
+            text-align: center;
+            border: 1px solid #000;
+            width: 33%;
+        }
+        
+        .signature-line {
+            border-bottom: 1px solid #000;
+            margin-top: 30px;
+            padding-bottom: 5px;
+            width: 80%;
+            margin: 30px auto 5px auto;
+        }
+        
+        .signature-label {
+            font-size: 12px;
+            color: #4a5568;
+        }
+        
+        /* المراجعة والتاريخ */
+        .revision {
+            margin-top: 20px;
+            font-size: 10px;
+            color: #718096;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        /* أزرار التحكم */
+        .action-buttons {
+            max-width: 1100px;
+            margin: 20px auto;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+            font-family: 'Cairo', sans-serif;
+        }
+        
+        .btn-print {
+            background: #1e4a6b;
+            color: white;
+        }
+        
+        .btn-print:hover {
+            background: #0f2c3f;
+        }
+        
+        .btn-back {
+            background: #718096;
+            color: white;
+        }
+        
+        .btn-back:hover {
+            background: #4a5568;
+        }
+        
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+                margin: 0;
+            }
+            .action-buttons {
+                display: none;
+            }
+            .print-paper {
+                box-shadow: none;
+                padding: 15px;
+                max-width: 100%;
+            }
+            .doc-number {
+                position: static;
+                float: left;
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="action-buttons">
+        <button class="btn btn-print" onclick="window.print()">
+            <i class="fas fa-print"></i> طباعة
+        </button>
+        <button class="btn btn-back" onclick="goBack()">
+            <i class="fas fa-arrow-right"></i> رجوع
+        </button>
+    </div>
+
+    <div class="print-paper" id="printArea">
+        <!-- مسلسل المستند -->
+        <div class="doc-number" id="docNumberDisplay">
+            مسلسل: <span id="docNumber">---</span>
+        </div>
+
+        <!-- الترويسة -->
+        <div class="header">
+            <div class="company-name">شركة الأدوية العربية</div>
+            <div class="company-info">Arab Pharmaceutical Company - APC</div>
+            <div class="doc-title">إذن صرف من المخزن</div>
+            <div class="company-info">Warehouse Withdrawal Permit</div>
+        </div>
+
+        <!-- إيقاف فارما -->
+        <div class="stop-pharma">
+            إيقاف فارما
+        </div>
+
+        <!-- جدول البيانات الأساسية -->
+        <table class="info-table">
+            <tr>
+                <th>جهة الطلب</th>
+                <td colspan="3" id="requestingDept">---</td>
+                <th>التاريخ</th>
+                <td id="requestDate">---</td>
+            </tr>
+            <tr>
+                <th>الأسباب / الغرض</th>
+                <td colspan="5" id="reasonText">---</td>
+            </tr>
+            <tr>
+                <th>رقم التشغيلية</th>
+                <td colspan="5" id="operationNumber">---</td>
+            </tr>
+        </table>
+
+        <!-- جدول الأصناف -->
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>رقم الكود</th>
+                    <th>الصنف ومواصفاته</th>
+                    <th>الوحدة</th>
+                    <th>الكمية المطلوبة</th>
+                    <th>ملاحظات</th>
+                </tr>
+            </thead>
+            <tbody id="itemsTableBody">
+                <tr>
+                    <td colspan="5" style="text-align: center;">لا توجد بيانات</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- التوقيعات -->
+        <div class="signatures">
+            <table class="signatures-table">
+                <tr>
+                    <td>
+                        <div>الاسم</div>
+                        <div class="signature-line" id="requesterNameDisplay"></div>
+                        <div class="signature-label">طالب الصرف</div>
+                    </td>
+                    <td>
+                        <div>التوقيع</div>
+                        <div class="signature-line" id="requesterSignatureDisplay"></div>
+                        <div class="signature-label">توقيع طالب الصرف</div>
+                    </td>
+                    <td>
+                        <div>المدير المسؤول</div>
+                        <div class="signature-line" id="managerNameDisplay"></div>
+                        <div class="signature-label">مدير الإدارة</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2">
+                        <div>الجهة الطبية</div>
+                        <div class="signature-line" id="medicalNameDisplay"></div>
+                        <div class="signature-label">الجهة الطبية / التوقيع</div>
+                    </td>
+                    <td>
+                        <div>ختم المخزن</div>
+                        <div class="signature-line"></div>
+                        <div class="signature-label">أمين المخزن</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- مراجعة وتواريخ -->
+        <div class="revision">
+            <span>Rev. No.: 1</span>
+            <span>Rev.date: 8/10/2014</span>
+            <span>Effective date: 1/11/2014</span>
+        </div>
+    </div>
+
+    <script>
+        // جلب البيانات من localStorage أو URL params
+        let requestData = null;
+        
+        function getRequestData() {
+            // محاولة جلب البيانات من localStorage
+            const storedRequests = localStorage.getItem('store_requests');
+            if (!storedRequests) return null;
+            
+            const requests = JSON.parse(storedRequests);
+            
+            // جلب الـ id من URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const requestId = urlParams.get('id');
+            
+            if (requestId) {
+                return requests.find(r => r.id == requestId);
+            }
+            
+            // لو مفيش id، جلب آخر طلب
+            return requests.length > 0 ? requests[requests.length - 1] : null;
+        }
+        
+        function formatDate(dateString) {
+            if (!dateString) return '---';
+            const date = new Date(dateString);
+            if (isNaN(date)) return dateString;
+            return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+        }
+        
+        function loadPrintData() {
+            requestData = getRequestData();
+            
+            if (!requestData) {
+                document.getElementById('printArea').innerHTML = `
+                    <div style="text-align: center; padding: 50px;">
+                        <h2>⚠️ لا توجد بيانات للطباعة</h2>
+                        <p>لم يتم العثور على طلب الصرف المطلوب</p>
+                        <button onclick="goBack()" style="margin-top: 20px; padding: 10px 20px;">العودة للصفحة الرئيسية</button>
+                    </div>
+                `;
+                return;
+            }
+            
+            // تعبئة البيانات
+            document.getElementById('docNumber').innerText = requestData.request_number || '---';
+            document.getElementById('requestingDept').innerText = requestData.requesting_department || '---';
+            document.getElementById('requestDate').innerText = formatDate(requestData.request_date);
+            document.getElementById('reasonText').innerText = requestData.reason || '---';
+            document.getElementById('operationNumber').innerText = requestData.operation_number || '---';
+            
+            // التوقيعات
+            document.getElementById('requesterNameDisplay').innerText = requestData.requester_name || '______';
+            document.getElementById('requesterSignatureDisplay').innerText = requestData.requester_signature || '______';
+            document.getElementById('managerNameDisplay').innerText = requestData.manager_name || '______';
+            document.getElementById('medicalNameDisplay').innerText = requestData.medical_director_name || '______';
+            
+            // جدول الأصناف (لو فيه أكتر من صنف)
+            // حالياً هنعرض صنف واحد، لكن ممكن يتعدل عشان يدعم أكتر من صنف
+            const itemsBody = document.getElementById('itemsTableBody');
+            
+            // لو فيه request_items في المستقبل، هنا هتتعرض
+            // حالياً هنعرض الصنف الرئيسي
+            itemsBody.innerHTML = `
+                <tr>
+                    <td>${requestData.item_code || '---'}</td>
+                    <td style="text-align: right;">${requestData.item_name || '---'}</td>
+                    <td>${requestData.unit || '---'}</td>
+                    <td>${requestData.quantity || '0'} ${requestData.unit || ''}</td>
+                    <td style="text-align: right;">${requestData.notes || '---'}</td>
+                </tr>
+            `;
+        }
+        
+        function goBack() {
+            window.location.href = 'store_requests.html';
+        }
+        
+        // تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', loadPrintData);
+        
+        // جعل الدوال عالمية
+        window.goBack = goBack;
+    </script>
+</body>
+</html>

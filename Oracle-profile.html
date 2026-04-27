@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title> الملف الشخصي</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Cairo', sans-serif; background: #f0f9f0; overflow-x: hidden; }
+        
+        /* القائمة الجانبية */
+        .sidebar {
+            position: fixed;
+            right: 0;
+            top: 0;
+            width: 280px;
+            height: 100%;
+            background: linear-gradient(180deg, #1e4a6b 0%, #0f2c3f 100%);
+            color: white;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+            transform: translateX(100%);
+        }
+        .sidebar.open {
+            transform: translateX(0);
+        }
+        
+        /* زر القائمة للجوال */
+        .mobile-menu-btn {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            z-index: 1001;
+            background: #1e4a6b;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            display: none;
+        }
+        
+        /* المحتوى الرئيسي */
+        .main-content {
+            transition: margin-right 0.3s ease;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        /* تغطية الخلفية للجوال */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            display: none;
+        }
+        .overlay.open {
+            display: block;
+        }
+        
+        @media (max-width: 768px) {
+            .mobile-menu-btn {
+                display: block;
+            }
+            .main-content {
+                padding: 60px 15px 15px 15px !important;
+            }
+        }
+        
+        @media (min-width: 769px) {
+            .sidebar {
+                transform: translateX(0) !important;
+            }
+            .overlay {
+                display: none !important;
+            }
+        }
+        
+        /* عناصر القائمة */
+        .sidebar a, .sidebar button {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            color: rgba(255,255,255,0.9);
+            text-decoration: none;
+            width: 100%;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+            text-align: right;
+        }
+        .sidebar a:hover, .sidebar button:hover {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+        .sidebar a.active, .sidebar button.active {
+            background: rgba(255,255,255,0.3);
+            color: white;
+        }
+        .sidebar a i, .sidebar button i {
+            margin-left: 12px;
+            width: 20px;
+        }
+        
+        .profile-section {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            margin-bottom: 15px;
+        }
+        .profile-avatar {
+            width: 70px;
+            height: 70px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            margin: 0 auto 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            font-weight: bold;
+            border: 3px solid white;
+        }
+        
+        /* بطاقات الملف الشخصي */
+        .profile-card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            border: 1px solid #e2e8f0;
+        }
+        
+        .avatar-large {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #1e4a6b, #0f2c3f);
+            border-radius: 50%;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 45px;
+            font-weight: bold;
+            color: white;
+            border: 4px solid #10b981;
+        }
+        
+        .info-row {
+            display: flex;
+            padding: 12px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .info-label {
+            width: 140px;
+            font-weight: 600;
+            color: #1e4a6b;
+        }
+        .info-value {
+            flex: 1;
+            color: #334155;
+        }
+        
+        .edit-input {
+            width: 100%;
+            padding: 10px 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-family: 'Cairo';
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .edit-input:focus {
+            border-color: #1e4a6b;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(30,74,107,0.1);
+        }
+        
+        .save-btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .save-btn:hover {
+            background: #059669;
+            transform: translateY(-1px);
+        }
+        
+        .cancel-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .cancel-btn:hover {
+            background: #dc2626;
+            transform: translateY(-1px);
+        }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 15px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-active {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .status-inactive {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .message {
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            display: none;
+            font-size: 13px;
+        }
+        .message.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        .message.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        @media (max-width: 640px) {
+            .info-row {
+                flex-direction: column;
+                gap: 5px;
+            }
+            .info-label {
+                width: auto;
+            }
+            .profile-card {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- تغطية الخلفية للجوال -->
+    <div id="overlay" class="overlay" onclick="closeSidebar()"></div>
+    
+    <!-- زر القائمة للجوال -->
+    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+
+    <!-- القائمة الجانبية -->
+    <div id="sidebar" class="sidebar">
+        <div class="profile-section">
+            <div class="profile-avatar" id="profileInitial">👤</div>
+            <div id="profileName" class="font-bold text-lg">جاري التحميل...</div>
+            <div id="profileRole" class="text-sm text-white/80 mt-1">حساب اوراكل</div>
+        </div>
+        
+        <nav>
+               <a href="Oracle-dashboard .html" ><i class="fas fa-user ml-2"></i>  لوحة التحكم</a>
+            <a href="coding-dashboard.html"><i class="fas fa-code ml-2"></i> التكويد</a>
+           
+            <a href="Oracle-profile.html" class="active"><i class="fas fa-user ml-2"></i> ملفي الشخصي</a>
+            <button onclick="logout()"><i class="fas fa-sign-out-alt ml-2"></i> تسجيل خروج</button>
+        </nav>
+    </div>
+
+    <!-- المحتوى الرئيسي -->
+    <div class="main-content" id="mainContent">
+        <!-- عنوان الصفحة -->
+        <div class="mb-6">
+            <h1 class="text-2xl md:text-3xl font-bold">👤 ملفي الشخصي</h1>
+            <p class="text-gray-600 text-sm md:text-base">عرض وتعديل معلومات حسابك الشخصي</p>
+        </div>
+
+        <!-- رسائل -->
+        <div id="errorMessage" class="message error"></div>
+        <div id="successMessage" class="message success"></div>
+
+        <!-- محتوى الملف الشخصي -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- بطاقة الصورة والمعلومات الأساسية -->
+            <div class="lg:col-span-1">
+                <div class="profile-card text-center">
+                    <div class="avatar-large" id="profileAvatar">👤</div>
+                    
+                    <h2 class="text-2xl font-bold text-gray-800" id="displayFullName">-</h2>
+                    <p class="text-gray-600 mb-3" id="displayUsername">@-</p>
+                    
+                    <div class="flex justify-center mb-4">
+                        <span class="status-badge" id="displayStatus">نشط</span>
+                    </div>
+                    
+                    <div class="text-sm text-gray-500">
+                        <div>عضو منذ: <span id="displayMemberSince">-</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- بطاقة المعلومات التفصيلية -->
+            <div class="lg:col-span-2">
+                <div class="profile-card">
+                    <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+                        <h3 class="text-xl font-bold">معلومات الحساب</h3>
+                        <button id="editBtn" onclick="enableEditMode()" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition-colors">
+                            ✏️ تعديل
+                        </button>
+                    </div>
+                    
+                    <!-- وضع العرض -->
+                    <div id="viewMode">
+                        <div class="info-row">
+                            <span class="info-label">البريد الإلكتروني:</span>
+                            <span class="info-value" id="viewEmail">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">اسم المستخدم:</span>
+                            <span class="info-value" id="viewUsername">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">الاسم الكامل:</span>
+                            <span class="info-value" id="viewFullName">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">القسم:</span>
+                            <span class="info-value" id="viewDepartment">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">الدور:</span>
+                            <span class="info-value" id="viewRole">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">آخر تحديث:</span>
+                            <span class="info-value" id="viewUpdatedAt">-</span>
+                        </div>
+                    </div>
+                    
+                    <!-- وضع التعديل -->
+                    <div id="editMode" class="hidden">
+                        <form id="profileForm">
+                            <div class="mb-4">
+                                <label class="block text-gray-700 mb-2">البريد الإلكتروني</label>
+                                <input type="email" id="editEmail" class="edit-input bg-gray-100" readonly>
+                                <p class="text-xs text-gray-500 mt-1">لا يمكن تعديل البريد الإلكتروني</p>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="block text-gray-700 mb-2">اسم المستخدم</label>
+                                <input type="text" id="editUsername" class="edit-input" required>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="block text-gray-700 mb-2">الاسم الكامل</label>
+                                <input type="text" id="editFullName" class="edit-input" required>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="block text-gray-700 mb-2">القسم</label>
+                                <input type="text" id="editDepartment" class="edit-input" placeholder="مثال: هندسة، مبيعات...">
+                            </div>
+                            
+                            <div class="flex gap-3 mt-6">
+                                <button type="submit" class="save-btn flex-1">💾 حفظ التغييرات</button>
+                                <button type="button" onclick="disableEditMode()" class="cancel-btn flex-1">❌ إلغاء</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- قسم تغيير كلمة المرور -->
+                <div class="profile-card mt-6">
+                    <h3 class="text-xl font-bold mb-4">🔐 تغيير كلمة المرور</h3>
+                    <p class="text-sm text-gray-600 mb-4">سيتم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني</p>
+                    <button onclick="resetPassword()" class="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors">
+                        إرسال رابط إعادة التعيين
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase.js"></script>
+
+    <script>
+        const supabaseClient = window.AppSupabase || window.supabase;
+        let currentUser = null;
+        let currentUserData = null;
+        
+        // دوال القائمة الجانبية للجوال
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('overlay').classList.toggle('open');
+        }
+        
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.remove('open');
+            document.getElementById('overlay').classList.remove('open');
+        }
+        
+        // الانتقال إلى لوحة التحكم
+        function goToDashboard() {
+            window.location.href = 'dept-manager-dashboard.html';
+        }
+
+        // تحميل بيانات المستخدم
+        async function loadUserProfile() {
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (!user) {
+                    window.location.href = 'user-login.html';
+                    return;
+                }
+
+                const { data: userData, error } = await supabaseClient
+                    .from('users')
+                    .select('*')
+                    .eq('id', user.id)
+                    .single();
+
+                if (error) throw error;
+
+                if (userData) {
+                    currentUserData = userData;
+                    
+                    // تحديث القائمة الجانبية
+                    const displayName = userData.full_name || userData.username;
+                    document.getElementById('profileName').textContent = displayName;
+                    document.getElementById('profileInitial').textContent = displayName.charAt(0);
+                    
+                    // تحديث صفحة البروفايل
+                    updateProfileDisplay(userData);
+                    
+                    // غلق القائمة الجانبية في الموبايل
+                    closeSidebar();
+                }
+
+            } catch (error) {
+                console.error('خطأ في تحميل الملف الشخصي:', error);
+                showError('حدث خطأ في تحميل البيانات');
+            }
+        }
+
+        // تحديث عرض البروفايل
+        function updateProfileDisplay(userData) {
+            const displayName = userData.full_name || userData.username;
+            
+            // الصورة الرمزية
+            document.getElementById('profileAvatar').textContent = displayName.charAt(0);
+            
+            // العرض الرئيسي
+            document.getElementById('displayFullName').textContent = userData.full_name || '-';
+            document.getElementById('displayUsername').textContent = `@${userData.username || '-'}`;
+            
+            // الحالة
+            const statusSpan = document.getElementById('displayStatus');
+            if (userData.status === 'active') {
+                statusSpan.textContent = 'نشط';
+                statusSpan.className = 'status-badge status-active';
+            } else if (userData.status === 'inactive') {
+                statusSpan.textContent = 'غير نشط';
+                statusSpan.className = 'status-badge status-inactive';
+            } else if (userData.status === 'pending') {
+                statusSpan.textContent = 'قيد الانتظار';
+                statusSpan.className = 'status-badge status-pending';
+            } else {
+                statusSpan.textContent = userData.status || '-';
+            }
+            
+            // تاريخ العضوية
+            if (userData.created_at) {
+                const date = new Date(userData.created_at).toLocaleDateString('ar-EG', {
+                    year: 'numeric', month: 'long', day: 'numeric'
+                });
+                document.getElementById('displayMemberSince').textContent = date;
+            }
+            
+            // معلومات الحساب
+            document.getElementById('viewEmail').textContent = userData.email || '-';
+            document.getElementById('viewUsername').textContent = userData.username || '-';
+            document.getElementById('viewFullName').textContent = userData.full_name || '-';
+            document.getElementById('viewDepartment').textContent = userData.department || 'غير محدد';
+            
+            // الدور
+            const roleText = {
+                'admin': 'مدير',
+                'manager': 'مدير قسم',
+                'oracle': 'أرڤاكل',
+                'engineer': 'مهندس',
+                'viewer': 'مشاهد',
+                'other': 'أخرى'
+            }[userData.role] || userData.role || '-';
+            document.getElementById('viewRole').textContent = roleText;
+            
+            // آخر تحديث
+            if (userData.updated_at) {
+                const updated = new Date(userData.updated_at).toLocaleDateString('ar-EG', {
+                    year: 'numeric', month: 'long', day: 'numeric'
+                });
+                document.getElementById('viewUpdatedAt').textContent = updated;
+            } else {
+                document.getElementById('viewUpdatedAt').textContent = '-';
+            }
+            
+            // تعبئة حقول التعديل
+            document.getElementById('editEmail').value = userData.email || '';
+            document.getElementById('editUsername').value = userData.username || '';
+            document.getElementById('editFullName').value = userData.full_name || '';
+            document.getElementById('editDepartment').value = userData.department || '';
+        }
+
+        // تفعيل وضع التعديل
+        function enableEditMode() {
+            document.getElementById('viewMode').classList.add('hidden');
+            document.getElementById('editMode').classList.remove('hidden');
+            document.getElementById('editBtn').classList.add('hidden');
+        }
+
+        // إلغاء وضع التعديل
+        function disableEditMode() {
+            document.getElementById('viewMode').classList.remove('hidden');
+            document.getElementById('editMode').classList.add('hidden');
+            document.getElementById('editBtn').classList.remove('hidden');
+        }
+
+        // حفظ التغييرات
+        document.getElementById('profileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'جاري الحفظ...';
+
+            try {
+                const updates = {
+                    username: document.getElementById('editUsername').value,
+                    full_name: document.getElementById('editFullName').value,
+                    department: document.getElementById('editDepartment').value || null,
+                    updated_at: new Date().toISOString()
+                };
+
+                const { error } = await supabaseClient
+                    .from('users')
+                    .update(updates)
+                    .eq('id', currentUserData.id);
+
+                if (error) throw error;
+
+                showSuccess('✅ تم حفظ التغييرات بنجاح');
+                
+                // إعادة تحميل البيانات
+                await loadUserProfile();
+                disableEditMode();
+
+            } catch (error) {
+                console.error('خطأ في الحفظ:', error);
+                showError('حدث خطأ في حفظ التغييرات: ' + error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '💾 حفظ التغييرات';
+            }
+        });
+
+        // دالة إعادة تعيين كلمة السر
+        async function resetPassword() {
+            if (!currentUserData || !currentUserData.email) {
+                showError('لا يمكن إعادة تعيين كلمة المرور');
+                return;
+            }
+            
+            const resetUrl = window.location.origin + '/reset-password.html';
+            
+            Swal.fire({
+                title: 'تأكيد إرسال الرابط',
+                text: `سيتم إرسال رابط إعادة تعيين كلمة المرور إلى ${currentUserData.email}`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'نعم، أرسل',
+                cancelButtonText: 'إلغاء'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    try {
+                        const { error } = await supabaseClient.auth.resetPasswordForEmail(
+                            currentUserData.email, 
+                            { redirectTo: resetUrl }
+                        );
+                        
+                        if (error) throw error;
+                        
+                        Swal.fire('تم الإرسال', 'تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني', 'success');
+                    } catch (error) {
+                        console.error('خطأ:', error);
+                        Swal.fire('خطأ', 'حدث خطأ في إرسال رابط إعادة التعيين', 'error');
+                    }
+                }
+            });
+        }
+
+        // دوال المساعدة
+        function showError(msg) {
+            const div = document.getElementById('errorMessage');
+            div.textContent = msg;
+            div.classList.remove('hidden');
+            div.style.display = 'block';
+            setTimeout(() => {
+                div.style.display = 'none';
+                div.classList.add('hidden');
+            }, 4000);
+        }
+
+        function showSuccess(msg) {
+            const div = document.getElementById('successMessage');
+            div.textContent = msg;
+            div.classList.remove('hidden');
+            div.style.display = 'block';
+            setTimeout(() => {
+                div.style.display = 'none';
+                div.classList.add('hidden');
+            }, 3000);
+        }
+
+        // تسجيل الخروج
+        async function logout() {
+            Swal.fire({
+                title: 'تسجيل خروج',
+                text: 'هل أنت متأكد من رغبتك في تسجيل الخروج؟',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'نعم، تسجيل خروج',
+                cancelButtonText: 'إلغاء'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    await supabaseClient.auth.signOut();
+                    localStorage.removeItem('currentUser');
+                    window.location.href = "gateway.html?to=user-dashboard";
+                }
+            });
+        }
+
+        // إغلاق القائمة عند النقر خارجها في الموبايل
+        document.addEventListener('click', function(e) {
+            const sidebar = document.getElementById('sidebar');
+            const menuBtn = document.querySelector('.mobile-menu-btn');
+            const overlay = document.getElementById('overlay');
+            
+            if (window.innerWidth <= 768 && 
+                sidebar.classList.contains('open') && 
+                !sidebar.contains(e.target) && 
+                !menuBtn.contains(e.target)) {
+                closeSidebar();
+            }
+        });
+
+        // بدء التشغيل
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUserProfile();
+        });
+        
+        // تعريف الدوال في النطاق العام
+        window.toggleSidebar = toggleSidebar;
+        window.closeSidebar = closeSidebar;
+        window.goToDashboard = goToDashboard;
+        window.enableEditMode = enableEditMode;
+        window.disableEditMode = disableEditMode;
+        window.resetPassword = resetPassword;
+        window.logout = logout;
+    </script>
+</body>
+</html>

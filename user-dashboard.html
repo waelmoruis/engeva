@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>الادارة الهندسية برنامج المشتريات</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background: #f0f9f0;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+        
+        /* القائمة الجانبية */
+        .sidebar { 
+            position: fixed; 
+            right: 0; 
+            top: 0; 
+            width: 280px; 
+            height: 100%; 
+            background: linear-gradient(180deg, #122545 0%, #1e4a6b 100%);
+            color: white; 
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+        }
+        
+        .sidebar.collapsed {
+            transform: translateX(100%);
+        }
+        
+        .main-content { 
+            transition: margin-right 0.3s ease;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .main-content.expanded {
+            margin-right: 0;
+        }
+        
+        .main-content:not(.expanded) {
+            margin-right: 280px;
+        }
+        
+        .toggle-sidebar-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1001;
+            background: #122545;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            font-size: 18px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+        
+        .toggle-sidebar-btn:hover {
+            background: #1e4a6b;
+            transform: scale(1.05);
+        }
+        
+        @media (max-width: 768px) {
+            .main-content:not(.expanded) { margin-right: 0; }
+            .sidebar { transform: translateX(100%); }
+            .sidebar.mobile-open { transform: translateX(0); }
+            .toggle-sidebar-btn { top: 15px; right: 15px; }
+            .overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 999;
+                display: none;
+            }
+            .overlay.active { display: block; }
+        }
+        
+        @media (min-width: 769px) {
+            .overlay { display: none !important; }
+        }
+        
+        .sidebar a, .sidebar button {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            color: rgba(255,255,255,0.9);
+            text-decoration: none;
+            width: 100%;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .sidebar a:hover, .sidebar button:hover {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+        
+        .sidebar a.active {
+            background: rgba(255,255,255,0.3);
+            color: white;
+        }
+        
+        .profile-section {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            margin-bottom: 20px;
+        }
+        
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            margin: 0 auto 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            font-weight: bold;
+            border: 3px solid white;
+        }
+        
+        .stat-card {
+            transition: all 0.3s ease;
+            border-right: 4px solid #48bb78;
+            cursor: pointer;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(72, 187, 120, 0.2);
+        }
+        
+        /* تنسيق المستخدمين المتصلين */
+        .online-user-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: #f9fafb;
+            border-radius: 10px;
+            transition: all 0.2s;
+            border-right: 3px solid #48bb78;
+        }
+        
+        .online-user-item:hover {
+            background: #e6f7e6;
+            transform: translateX(-2px);
+        }
+        
+        .online-user-avatar {
+            width: 40px;
+            height: 40px;
+            background: #2f855a;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+            border: 2px solid white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .online-dot {
+            width: 10px;
+            height: 10px;
+            background: #4ade80;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+        }
+        
+        .online-users-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 5px;
+        }
+        
+        .online-users-grid::-webkit-scrollbar {
+            width: 6px;
+        }
+        .online-users-grid::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .online-users-grid::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        .online-users-grid::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        
+        .footer-text {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            padding: 15px;
+            text-align: center;
+            color: rgba(255,255,255,0.5);
+            font-size: 11px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+ 
+    <div id="overlay" class="overlay" onclick="closeSidebar()"></div>
+    <button class="toggle-sidebar-btn" onclick="toggleSidebar()">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- القائمة الجانبية -->
+    <div id="sidebar" class="sidebar">
+        <div class="profile-section">
+            <div class="profile-avatar" id="profileInitial">👤</div>
+            <div id="profileName" class="font-bold text-lg">جاري التحميل...</div>
+            <div id="profileRole" class="text-sm text-white/80 mt-1">مستخدم</div>
+        </div>
+        
+        <nav>
+            <a href="user-dashboard.html" class="active"><i class="fas fa-home ml-2"></i> الرئيسية</a>
+            <a href="user-inventory.html"><i class="fa-solid fa-warehouse ml-2"></i> المخزون</a>
+            <a href="Request.html"><i class="fas fa-clipboard-list ml-2"></i> جدول الطلبات</a>
+            <a href="StockRecovery.html"><i class="fas fa-boxes ml-2"></i> استعادة المخزون</a>
+            <a href="user-profile.html"><i class="fas fa-user ml-2"></i> الملف الشخصي</a>
+            <button onclick="logout()"><i class="fas fa-sign-out-alt ml-2"></i> تسجيل خروج</button>
+        </nav>
+
+        <!-- معلومات إضافية -->
+        <div class="footer-text">
+            <p>الادارة الهندسية برنامج المشتريات</p>
+            <p>wael © 2026 جميع الحقوق محفوظة</p>
+        </div>
+    </div>
+
+    <!-- المحتوى الرئيسي -->
+    <div class="main-content" id="mainContent">
+        <!-- الترحيب - مع مسافة متجاوبة -->
+<div class="bg-gradient-to-r from-[#122545] to-[#0a1a30] text-white p-6 rounded-2xl shadow-lg mb-6 mr-12 md:mr-16 lg:mr-20">  
+    <h1 class="text-xl md:text-2xl font-bold mb-2" id="welcomeMessage">مرحباً بك 👋</h1>
+    <p class="text-green-100 text-sm md:text-base">الادارة الهندسية برنامج المشتريات</p>
+</div>
+
+        <!-- بطاقات سريعة -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6 mr-12 md:mr-16 lg:mr-20">
+            <div class="stat-card bg-white p-5 rounded-2xl shadow-lg" onclick="window.location.href='user-inventory.html'">
+                <div class="text-3xl md:text-4xl mb-2 text-green-600">📦</div>
+                <div class="text-xl md:text-2xl font-bold" id="totalItems">0</div>
+                <div class="text-sm md:text-base text-gray-600">إجمالي العناصر</div>
+            </div>
+            <div class="stat-card bg-white p-5 rounded-2xl shadow-lg" onclick="window.location.href='user-inventory.html'">
+                <div class="text-3xl md:text-4xl mb-2 text-green-600">🏭</div>
+                <div class="text-xl md:text-2xl font-bold" id="totalGroups">0</div>
+                <div class="text-sm md:text-base text-gray-600">المجموعات</div>
+            </div>
+            <div class="stat-card bg-white p-5 rounded-2xl shadow-lg" onclick="window.location.href='user-inventory.html'">
+                <div class="text-3xl md:text-4xl mb-2 text-green-600">📍</div>
+                <div class="text-xl md:text-2xl font-bold" id="totalLocations">0</div>
+                <div class="text-sm md:text-base text-gray-600">المواقع</div>
+            </div>
+            <div class="stat-card bg-white p-5 rounded-2xl shadow-lg">
+                <div class="text-3xl md:text-4xl mb-2 text-green-600">👥</div>
+                <div class="text-xl md:text-2xl font-bold" id="onlineUsersCount">0</div>
+                <div class="text-sm md:text-base text-gray-600">متصلين الآن</div>
+            </div>
+        </div>
+
+        <!-- المستخدمين المتصلين -->
+        <div class="bg-white p-5 rounded-2xl shadow-lg mb-6 mr-12 md:mr-16 lg:mr-20">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg md:text-xl font-bold flex items-center">
+                    <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse ml-2"></span>
+                    المستخدمين المتصلين الآن
+                </h2>
+                <span class="text-sm text-gray-500" id="onlineUsersCountDetail">0 متصل</span>
+            </div>
+            <div id="onlineUsersGrid" class="online-users-grid">
+                <div class="text-gray-500 text-center py-4 col-span-3">جاري تحميل المتصلين...</div>
+            </div>
+        </div>
+
+        <!-- إحصائيات سريعة -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 mr-12 md:mr-16 lg:mr-20">
+            <div class="bg-white p-5 rounded-2xl shadow-lg">
+                <h2 class="text-lg md:text-xl font-bold mb-3 flex items-center">
+                    <span class="ml-2">📊</span> إحصائيات المخزون
+                </h2>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="text-center p-2 md:p-3 bg-green-50 rounded-lg">
+                        <div class="text-xl md:text-2xl font-bold text-green-600" id="lowStockCount">0</div>
+                        <div class="text-xs md:text-sm text-gray-600">منخفض المخزون</div>
+                    </div>
+                    <div class="text-center p-2 md:p-3 bg-yellow-50 rounded-lg">
+                        <div class="text-xl md:text-2xl font-bold text-yellow-600" id="outOfStockCount">0</div>
+                        <div class="text-xs md:text-sm text-gray-600">نفذ من المخزون</div>
+                    </div>
+                    <div class="text-center p-2 md:p-3 bg-blue-50 rounded-lg">
+                        <a href="user-inventory.html" class="block">
+                            <div class="text-2xl font-bold text-blue-600">📦</div>
+                            <div class="text-xs md:text-sm text-gray-600">المخزون</div>
+                        </a>
+                    </div>
+                    <div class="text-center p-2 md:p-3 bg-purple-50 rounded-lg">
+                        <a href="user-profile.html" class="block">
+                            <div class="text-2xl font-bold text-purple-600">👤</div>
+                            <div class="text-xs md:text-sm text-gray-600">الملف الشخصي</div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- آخر التحديثات -->
+            <div class="bg-white p-5 rounded-2xl shadow-lg">
+                <h2 class="text-lg md:text-xl font-bold mb-3 flex items-center">
+                    <span class="ml-2">⏱️</span> آخر التحديثات
+                </h2>
+                <div class="space-y-2" id="recentActivities">
+                    <div class="text-center py-4 text-gray-500 text-sm">جاري التحميل...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase.js"></script>
+
+    <script>
+        const supabaseClient = window.AppSupabase || window.supabase;
+        let currentUser = null;
+        let allItems = [];
+        let presenceChannel = null;
+        let onlineUsers = {};
+        let statsInterval = null;
+
+        // ========== دوال القائمة الجانبية (النسخة النهائية) ==========
+
+        // تهيئة القائمة الجانبية (مغلقة في البداية)
+        function initSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            
+            if (window.innerWidth <= 768) {
+                sidebar.classList.remove('mobile-open');
+                sidebar.classList.remove('open');
+            } else {
+                sidebar.classList.add('collapsed');
+                mainContent.classList.add('expanded');
+            }
+        }
+
+        // تبديل حالة القائمة الجانبية
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            const overlay = document.getElementById('overlay');
+            
+            if (window.innerWidth <= 768) {
+                sidebar.classList.toggle('mobile-open');
+                overlay.classList.toggle('active');
+            } else {
+                sidebar.classList.toggle('collapsed');
+                mainContent.classList.toggle('expanded');
+            }
+        }
+
+        // إغلاق القائمة الجانبية
+        function closeSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            const overlay = document.getElementById('overlay');
+            
+            if (window.innerWidth <= 768) {
+                sidebar.classList.remove('mobile-open');
+                sidebar.classList.remove('open');
+                overlay.classList.remove('active');
+            } else {
+                sidebar.classList.add('collapsed');
+                mainContent.classList.add('expanded');
+            }
+        }
+
+        // النقر خارج القائمة لإغلاقها (فقط في الموبايل)
+        document.addEventListener('click', function(e) {
+            const sidebar = document.getElementById('sidebar');
+            const toggleBtn = document.querySelector('.toggle-sidebar-btn');
+            
+            if (window.innerWidth <= 768 && (sidebar.classList.contains('mobile-open') || sidebar.classList.contains('open'))) {
+                if (!sidebar.contains(e.target) && !toggleBtn.contains(e.target)) {
+                    closeSidebar();
+                }
+            }
+        });
+
+        // عند تغيير حجم الشاشة
+        window.addEventListener('resize', function() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            const overlay = document.getElementById('overlay');
+            
+            if (window.innerWidth > 768) {
+                sidebar.classList.remove('mobile-open');
+                sidebar.classList.remove('open');
+                overlay.classList.remove('active');
+                if (!sidebar.classList.contains('collapsed')) {
+                    sidebar.classList.add('collapsed');
+                    mainContent.classList.add('expanded');
+                }
+            } else {
+                sidebar.classList.remove('collapsed');
+                mainContent.classList.remove('expanded');
+                sidebar.classList.remove('mobile-open');
+                sidebar.classList.remove('open');
+                overlay.classList.remove('active');
+            }
+        });
+
+        // ========== باقي دوال الصفحة ==========
+
+        // تحميل بيانات المستخدم
+        async function loadUserData() {
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (!user) {
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                const { data: userData, error } = await supabaseClient
+                    .from('users')
+                    .select('*')
+                    .eq('id', user.id)
+                    .single();
+
+                if (error) throw error;
+
+                if (userData) {
+                    currentUser = userData;
+                    const displayName = userData.full_name || userData.username;
+                    document.getElementById('profileName').textContent = displayName;
+                    document.getElementById('profileInitial').textContent = displayName.charAt(0);
+                    document.getElementById('welcomeMessage').innerHTML = `مرحباً ${displayName} 👋`;
+                }
+
+                await initPresence();
+                await loadStats();
+                
+                if (statsInterval) clearInterval(statsInterval);
+                statsInterval = setInterval(loadStats, 30000);
+
+            } catch (error) {
+                console.error('خطأ في تحميل المستخدم:', error);
+                window.location.href = 'index.html';
+            }
+        }
+
+        // نظام الحضور (المتصلين)
+        async function initPresence() {
+            if (!currentUser) return;
+            
+            try {
+                presenceChannel = supabaseClient.channel('online-users', {
+                    config: {
+                        presence: {
+                            key: currentUser.id,
+                        },
+                    },
+                });
+
+                await supabaseClient
+                    .from('users')
+                    .update({ is_online: true, last_seen: new Date().toISOString() })
+                    .eq('id', currentUser.id);
+
+                presenceChannel
+                    .on('presence', { event: 'sync' }, () => {
+                        const presenceState = presenceChannel.presenceState();
+                        updateOnlineUsers(presenceState);
+                    })
+                    .subscribe(async (status) => {
+                        if (status === 'SUBSCRIBED') {
+                            await presenceChannel.track({
+                                user_id: currentUser.id,
+                                user_name: currentUser.full_name || currentUser.username,
+                                user_role: currentUser.role,
+                                online_at: new Date().toISOString(),
+                            });
+                        }
+                    });
+            } catch (error) {
+                console.error('خطأ في نظام الحضور:', error);
+            }
+        }
+
+        // تحديث قائمة المتصلين
+        function updateOnlineUsers(presenceState) {
+            try {
+                const users = Object.values(presenceState).flat();
+                const count = users.length;
+                document.getElementById('onlineUsersCount').textContent = count;
+                document.getElementById('onlineUsersCountDetail').textContent = `${count} متصل`;
+                
+                const grid = document.getElementById('onlineUsersGrid');
+                if (users.length === 0) {
+                    grid.innerHTML = '<div class="text-gray-500 text-center py-4 col-span-3">لا يوجد مستخدمين متصلين</div>';
+                    return;
+                }
+                
+                grid.innerHTML = users.map(user => `
+                    <div class="online-user-item">
+                        <div class="online-user-avatar">${(user.user_name || 'مستخدم').charAt(0)}</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="font-medium text-sm truncate">${user.user_name}</div>
+                            <div class="flex items-center gap-1 mt-1">
+                                <span class="online-dot"></span>
+                                <span class="text-xs text-gray-500">${user.user_role === 'admin' ? '👑 مدير' : '👤 مستخدم'}</span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('خطأ في تحديث المتصلين:', error);
+            }
+        }
+
+        // تحميل الإحصائيات
+        async function loadStats() {
+            try {
+                const { count: totalItems } = await supabaseClient.from('combined_data').select('*', { count: 'exact', head: true });
+                document.getElementById('totalItems').textContent = totalItems || 0;
+                
+                const { count: groupsCount } = await supabaseClient.from('groups').select('*', { count: 'exact', head: true });
+                if (groupsCount !== null) document.getElementById('totalGroups').textContent = groupsCount || 0;
+                
+                const { data: items } = await supabaseClient.from('combined_data').select('*');
+                allItems = items || [];
+                
+                const uniqueLocators = new Set(allItems.map(i => i.locator).filter(l => l));
+                document.getElementById('totalLocations').textContent = uniqueLocators.size;
+
+                const lowStock = allItems.filter(i => { const qty = parseFloat(i.total_qty) || 0; return qty > 0 && qty < 10; }).length;
+                document.getElementById('lowStockCount').textContent = lowStock;
+
+                const outOfStock = allItems.filter(i => { const qty = parseFloat(i.total_qty) || 0; return qty === 0; }).length;
+                document.getElementById('outOfStockCount').textContent = outOfStock;
+
+                displayRecentActivities(allItems.slice(0, 5));
+            } catch (error) {
+                console.error('خطأ في تحميل الإحصائيات:', error);
+            }
+        }
+
+        // عرض آخر التحديثات
+        function displayRecentActivities(items) {
+            const activities = document.getElementById('recentActivities');
+            if (!items || items.length === 0) {
+                activities.innerHTML = '<div class="text-center py-4 text-gray-500 text-sm">لا توجد تحديثات</div>';
+                return;
+            }
+            activities.innerHTML = items.map(item => `
+                <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg text-sm">
+                    <div><span class="font-bold">${item.item_no}</span><span class="text-xs text-gray-600 mr-2">${item.description || ''}</span></div>
+                    <div class="text-xs text-gray-500">${new Date(item.created_at).toLocaleDateString('ar-EG')}</div>
+                </div>
+            `).join('');
+        }
+
+        // تسجيل الخروج
+        async function logout() {
+            try {
+                if (presenceChannel) {
+                    try {
+                        await presenceChannel.untrack();
+                        if (currentUser) await supabaseClient.from('users').update({ is_online: false }).eq('id', currentUser.id);
+                        await presenceChannel.unsubscribe();
+                    } catch (e) {}
+                }
+                if (statsInterval) clearInterval(statsInterval);
+                await supabaseClient.auth.signOut();
+                window.location.href = 'index.html';
+            } catch (error) {
+                window.location.href = 'index.html';
+            }
+        }
+
+        // عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUserData();
+            initSidebar();
+        });
+
+        // تنظيف عند إغلاق الصفحة
+        window.addEventListener('beforeunload', function() {
+            if (presenceChannel && currentUser) {
+                supabaseClient.from('users').update({ is_online: false }).eq('id', currentUser.id).then().catch(() => {});
+            }
+        });
+    </script>
+</body>
+</html>

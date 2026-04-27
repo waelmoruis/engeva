@@ -1,0 +1,182 @@
+<script>
+    // دوال القائمة الجانبية للجوال
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('open');
+        document.getElementById('overlay').classList.toggle('open');
+    }
+    
+    function closeSidebar() {
+        document.getElementById('sidebar').classList.remove('open');
+        document.getElementById('overlay').classList.remove('open');
+    }
+
+    const supabaseClient = window.AppSupabase || window.supabase;
+    let currentUser = null;
+    let onlineUsers = new Map();
+
+    // تحميل بيانات المستخدم الحالي
+    async function loadUserProfile() {
+        try {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) { 
+                window.location.href = 'user-login.html'; 
+                return; 
+            }
+
+            const { data: userData } = await supabaseClient
+                .from('users').select('*').eq('id', user.id).single();
+
+            if (userData) {
+                currentUser = userData;
+                const displayName = userData.full_name || userData.username;
+                document.getElementById('profileName').textContent = displayName;
+                document.getElementById('profileInitial').textContent = displayName.charAt(0);
+                document.getElementById('profileRole').textContent = 
+                    userData.role === 'admin' ? 'مدير النظام' : 'مستخدم عادي';
+                
+                // تحديث حالة المستخدم كل دقيقة
+                updateUserPresence();
+                setInterval(updateUserPresence, 60000);
+                
+                // بدء متابعة المتصلين
+                subscribeToOnlineUsers();
+                loadOnlineUsers();
+            }
+        } catch (error) {
+            console.error('خطأ:', error);
+        }
+    }
+
+    // تحديث حالة التواجد
+    async function updateUserPresence() {
+        if (!currentUser) return;
+        
+        try {
+            await supabaseClient
+                .from('users')
+                .update({ 
+                    last_seen: new Date(),
+                    is_online: true 
+                })
+                .eq('id', currentUser.id);
+        } catch (error) {
+            console.error('خطأ في تحديث الحالة:', error);
+        }
+    }
+
+    // تحديث حالة عدم الاتصال عند الخروج
+    window.addEventListener('beforeunload', async () => {
+        if (currentUser) {
+            await supabaseClient
+                .from('users')
+                .update({ 
+                    is_online: false,
+                    last_seen: new Date()
+                })
+                .eq('id', currentUser.id);
+        }
+    });
+
+    // تحميل المتصلين
+    async function loadOnlineUsers() {
+        try {
+            const { data, error } = await supabaseClient
+                .from('users')
+                .select('id, full_name, username, role, is_online, last_seen')
+                .order('full_name');
+
+            if (error) throw error;
+
+            onlineUsers.clear();
+            data?.forEach(user => {
+                if (user.id !== currentUser?.id) {
+                    onlineUsers.set(user.id, user);
+                }
+            });
+            
+            displayOnlineUsers();
+            updateOnlineCount();
+
+        } catch (error) {
+            console.error('خطأ في تحميل المتصلين:', error);
+        }
+    }
+
+    // الاشتراك في تحديثات المتصلين
+    function subscribeToOnlineUsers() {
+        const subscription = supabaseClient
+            .channel('online-users')
+            .on('postgres_changes', 
+                { event: '*', schema: 'public', table: 'users' },
+                (payload) => {
+                    const user = payload.new;
+                    if (user.id !== currentUser?.id) {
+                        if (user.is_online) {
+                            onlineUsers.set(user.id, user);
+                        } else {
+                            onlineUsers.delete(user.id);
+                        }
+                        displayOnlineUsers();
+                        updateOnlineCount();
+                    }
+                }
+            )
+            .subscribe();
+    }
+
+    // عرض المتصلين
+    function displayOnlineUsers() {
+        const container = document.getElementById('privateUsersList');
+        if (!container) return;
+
+        const onlineArray = Array.from(onlineUsers.values());
+        
+        if (onlineArray.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-gray-500 py-8">
+                    <i class="fa-regular fa-user text-4xl mb-3 opacity-30"></i>
+                    <p class="text-sm">لا يوجد متصلين حالياً</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = onlineArray.map(user => `
+            <div class="online-user-item" onclick="startPrivateChat('${user.id}', '${user.full_name || user.username}')">
+                <div class="relative">
+                    <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-green-700 rounded-full flex items-center justify-center text-white font-bold">
+                        ${(user.full_name || user.username || 'U').charAt(0)}
+                    </div>
+                    <span class="user-status online absolute bottom-0 right-0"></span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="font-semibold text-sm truncate">${user.full_name || user.username}</div>
+                    <div class="text-xs text-gray-500 flex items-center">
+                        <span>${user.role === 'admin' ? 'مدير' : 'مستخدم'}</span>
+                        <span class="mx-1">•</span>
+                        <span class="text-green-600">متصل</span>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // تحديث عداد المتصلين
+    function updateOnlineCount() {
+        const count = onlineUsers.size;
+        document.getElementById('onlineCount').textContent = count;
+    }
+
+    // بدء محادثة خاصة
+    function startPrivateChat(userId, userName) {
+        alert(`بدء محادثة مع ${userName} - هذه الميزة قيد التطوير`);
+    }
+
+    // تحميل بيانات المستخدم عند بدء التشغيل
+    document.addEventListener('DOMContentLoaded', () => {
+        loadUserProfile();
+        
+        // تحديث المتصلين كل 30 ثانية
+        setInterval(loadOnlineUsers, 30000);
+    });
+</script>

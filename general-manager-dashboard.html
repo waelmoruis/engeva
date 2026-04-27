@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>طلبات الموافقة - مدير الإدارة</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Cairo', sans-serif; background: #f0f9f0; overflow-x: hidden; }
+        
+        .sidebar { position: fixed; right: 0; top: 0; width: 280px; height: 100%; background: linear-gradient(180deg, #2f855a 0%, #1e5a3a 100%); color: white; box-shadow: -2px 0 10px rgba(0,0,0,0.1); z-index: 1000; transition: transform 0.3s ease; overflow-y: auto; }
+        .sidebar.collapsed { transform: translateX(100%); }
+        .main-content { transition: margin-right 0.3s ease; min-height: 100vh; padding: 15px; }
+        .main-content.expanded { margin-right: 0; }
+        .main-content:not(.expanded) { margin-right: 280px; }
+        .toggle-sidebar-btn { position: fixed; top: 15px; right: 15px; z-index: 1001; background: #2f855a; color: white; border: none; border-radius: 8px; padding: 8px 12px; font-size: 16px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.2); transition: all 0.3s; }
+        .toggle-sidebar-btn:hover { background: #1e5a3a; transform: scale(1.05); }
+        
+        @media (max-width: 768px) {
+            .main-content:not(.expanded) { margin-right: 0; }
+            .sidebar { transform: translateX(100%); }
+            .sidebar.mobile-open { transform: translateX(0); }
+            .toggle-sidebar-btn { top: 10px; right: 10px; padding: 6px 10px; font-size: 14px; }
+            .overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; display: none; }
+            .overlay.active { display: block; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
+            .bulk-actions { flex-wrap: wrap; }
+            .pagination-controls { flex-direction: column; align-items: center; gap: 10px !important; }
+            .previous-requests-container { max-height: 250px !important; }
+        }
+        @media (min-width: 769px) { .overlay { display: none !important; } }
+        
+        .sidebar a, .sidebar button { display: flex; align-items: center; padding: 10px 14px; border-radius: 8px; margin-bottom: 5px; color: rgba(255,255,255,0.9); text-decoration: none; width: 100%; background: transparent; border: none; cursor: pointer; transition: all 0.3s; font-size: 14px; }
+        .sidebar a:hover, .sidebar button:hover { background: rgba(255,255,255,0.2); color: white; }
+        .sidebar a.active { background: rgba(255,255,255,0.3); color: white; }
+        .profile-section { text-align: center; padding: 15px 0; border-bottom: 1px solid rgba(255,255,255,0.2); margin-bottom: 15px; }
+        .profile-avatar { width: 70px; height: 70px; background: rgba(255,255,255,0.2); border-radius: 50%; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: bold; border: 3px solid white; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 15px; }
+        .stat-card { background: white; padding: 12px; border-radius: 12px; display: flex; align-items: center; gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
+        .stat-icon { width: 40px; height: 40px; background: #f0f9f0; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #2f855a; }
+        .stat-info { flex: 1; }
+        .stat-label { font-size: 11px; color: #718096; }
+        .stat-value { font-size: 20px; font-weight: bold; color: #2f855a; }
+        
+        .toolbar { background: white; border-radius: 12px; padding: 12px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
+        .search-input { width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 13px; }
+        .search-input:focus { border-color: #2f855a; outline: none; }
+        
+        .bulk-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #e2e8f0;
+            flex-wrap: wrap;
+        }
+        .bulk-actions .selected-count { font-size: 12px; color: #2f855a; font-weight: 600; }
+        .bulk-btn { padding: 5px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 11px; font-weight: 500; transition: all 0.2s; display: inline-flex; align-items: center; gap: 5px; }
+        .bulk-approve { background: #2f855a; color: white; }
+        .bulk-approve:hover { background: #226a48; transform: translateY(-1px); }
+        .bulk-reject { background: #ef4444; color: white; }
+        .bulk-reject:hover { background: #dc2626; transform: translateY(-1px); }
+        .select-all-btn { background: #e2e8f0; color: #4a5568; padding: 4px 8px; border-radius: 6px; font-size: 11px; cursor: pointer; }
+        .select-all-btn:hover { background: #cbd5e0; }
+        
+        .filters-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e2e8f0; }
+        .filter-group { flex: 1; min-width: 180px; }
+        .filter-group label { display: block; font-size: 10px; color: #718096; margin-bottom: 3px; }
+        .filter-group select { width: 100%; padding: 5px 8px; border: 1px solid #e2e8f0; border-radius: 6px; background: white; font-family: 'Cairo'; font-size: 11px; cursor: pointer; }
+        
+        .screenshot-btn { background: #2f855a; color: white; border: none; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 11px; display: flex; align-items: center; gap: 5px; }
+        .screenshot-btn:hover { background: #1e5a3a; transform: translateY(-1px); }
+        
+        .table-wrapper {
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow-x: auto;
+            overflow-y: auto;
+            border: 1px solid #edf2f7;
+            max-height: calc(100vh - 480px);
+            width: 100%;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            min-width: 1100px;
+        }
+
+        .data-table th {
+            background: #f8fafd;
+            color: #1e293b;
+            padding: 10px 8px;
+            font-weight: 600;
+            font-size: 11px;
+            white-space: nowrap;
+            border-bottom: 1px solid #e2edf2;
+            cursor: pointer;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .data-table th:hover { background: #f1f5f9; }
+        
+        .sort-icon { display: inline-flex; align-items: center; justify-content: center; margin-right: 4px; font-size: 10px; color: #94a3b8; }
+        .sort-icon.active { color: #2f855a; }
+        
+        .checkbox-col { width: 35px; text-align: center; }
+        .checkbox-col input { width: 16px; height: 16px; cursor: pointer; }
+
+        .data-table td {
+            padding: 8px;
+            border-bottom: 1px solid #edf2f7;
+            vertical-align: middle;
+        }
+
+        .stock-value {
+            font-weight: 600;
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 20px;
+            font-size: 10px;
+            min-width: 40px;
+            text-align: center;
+        }
+        .stock-high { background: #e6f9ed; color: #0b5e42; }
+        .stock-low { background: #fff5e6; color: #b45309; }
+        .stock-out { background: #fee9e9; color: #c2410c; }
+        .stock-zero { background: #fef3c7; color: #b45309; }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 9px;
+            font-weight: 600;
+        }
+        .status-onrequest { background: #fef3c7; color: #92400e; }
+        .status-dept-approved { background: #d1fae5; color: #065f46; }
+        .status-manager-done { background: #2f855a; color: white; }
+
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+            justify-content: flex-start;
+        }
+
+        .action-btn {
+            padding: 3px 8px;
+            border-radius: 20px;
+            border: none;
+            cursor: pointer;
+            font-size: 9px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .action-approve { background: #2f855a; color: white; }
+        .action-approve:hover { background: #226a48; transform: translateY(-1px); }
+        .action-reject { background: #f4f5f7; color: #b91c1c; border: 1px solid #f0d6d6; }
+        .action-reject:hover { background: #fee2e2; transform: translateY(-1px); }
+
+        /* تنسيق الترقيم */
+        .pagination-container {
+            background: white;
+            border-radius: 12px;
+            padding: 12px;
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+        }
+        
+        .pagination-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .pagination-btn {
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Cairo';
+            font-size: 12px;
+            transition: all 0.2s;
+            color: #334155;
+        }
+        
+        .pagination-btn:hover:not(:disabled) {
+            background: #2f855a;
+            color: white;
+            border-color: #2f855a;
+            transform: translateY(-1px);
+        }
+        
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .pagination-btn.active {
+            background: #2f855a;
+            color: white;
+            border-color: #2f855a;
+        }
+        
+        .page-info {
+            font-size: 12px;
+            color: #475569;
+            background: #f8fafc;
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .page-size-select {
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            font-family: 'Cairo';
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        .records-summary {
+            font-size: 12px;
+            color: #2f855a;
+            font-weight: 600;
+            background: #e6f9ed;
+            padding: 6px 12px;
+            border-radius: 8px;
+        }
+        
+        @media (max-width: 640px) {
+            .main-content { padding: 6px !important; }
+            .stats-grid { gap: 6px !important; }
+            .stat-card { padding: 6px !important; }
+            .stat-icon { width: 30px !important; height: 30px !important; font-size: 14px !important; }
+            .stat-value { font-size: 16px !important; }
+            .data-table { font-size: 10px !important; min-width: 900px !important; }
+            .data-table th { padding: 6px 4px !important; font-size: 9px !important; }
+            .data-table td { padding: 5px 4px !important; }
+            .action-btn { padding: 2px 6px !important; font-size: 8px !important; }
+            .pagination-container { flex-direction: column; align-items: stretch; }
+            .pagination-controls { justify-content: center; }
+        }
+
+        .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 2000; padding: 15px; }
+        .modal.open { display: flex; }
+        .modal-content { background: white; border-radius: 16px; max-width: 750px; width: 90%; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; }
+        .modal-title { font-size: 15px; font-weight: bold; color: #2f855a; }
+        .close-btn { background: none; border: none; font-size: 18px; cursor: pointer; color: #718096; }
+        .modal-footer { padding: 12px 16px; border-top: 1px solid #e2e8f0; display: flex; gap: 12px; justify-content: space-between; align-items: center; }
+        .btn-save { background: #2f855a; color: white; padding: 6px 16px; border: none; border-radius: 6px; cursor: pointer; }
+        .btn-cancel { background: #e2e8f0; color: #4a5568; padding: 6px 16px; border: none; border-radius: 6px; cursor: pointer; }
+        
+        .screenshot-btn-detail {
+            background: #2f855a;
+            color: white;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        .screenshot-btn-detail:hover {
+            background: #1e5a3a;
+            transform: translateY(-1px);
+        }
+        
+        .message { padding: 8px 12px; border-radius: 8px; margin-bottom: 12px; display: none; font-size: 12px; }
+        .message.error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        .message.success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+        
+        .footer { text-align: center; padding: 8px; color: #718096; font-size: 10px; border-top: 1px solid #e2e8f0; margin-top: 12px; }
+        
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #2f855a; border-radius: 10px; }
+        
+        .details-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .detail-item { border-bottom: 1px solid #f0f0f0; padding-bottom: 6px; }
+        .detail-label { font-size: 11px; color: #718096; margin-bottom: 3px; }
+        .detail-value { font-weight: 600; color: #1f2937; font-size: 13px; }
+        
+        .scroll-hint-mobile { display: none; text-align: center; padding: 8px; color: #2f855a; font-size: 11px; background: #e6f9ed; border-radius: 8px; margin: 5px 0; }
+        @media (max-width: 768px) { .scroll-hint-mobile { display: block; } }
+        
+        /* تنسيق الطلبات السابقة */
+        .previous-requests-container {
+            margin-top: 20px;
+            border-top: 2px solid #e2e8f0;
+            padding-top: 15px;
+        }
+        .previous-requests-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #2f855a;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .previous-requests-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            background: #f9fafb;
+        }
+        .request-history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            border-bottom: 1px solid #e2e8f0;
+            transition: background 0.2s;
+        }
+        .request-history-item:last-child {
+            border-bottom: none;
+        }
+        .request-history-item:hover {
+            background: #f0fdf4;
+        }
+        .history-date {
+            font-size: 11px;
+            color: #6b7280;
+            min-width: 85px;
+        }
+        .history-request {
+            flex: 2;
+            font-size: 12px;
+            font-weight: 500;
+            color: #1f2937;
+            padding: 0 8px;
+        }
+        .history-quantity {
+            font-size: 12px;
+            font-weight: 600;
+            color: #2f855a;
+            min-width: 60px;
+            text-align: center;
+        }
+        .history-person {
+            font-size: 11px;
+            color: #6b7280;
+            min-width: 100px;
+        }
+        .history-status {
+            min-width: 100px;
+        }
+        .empty-history {
+            text-align: center;
+            padding: 20px;
+            color: #9ca3af;
+            font-size: 12px;
+        }
+        @media (max-width: 640px) {
+            .request-history-item {
+                flex-wrap: wrap;
+                gap: 5px;
+            }
+            .history-date, .history-quantity, .history-person, .history-status {
+                font-size: 10px;
+            }
+            .history-request {
+                width: 100%;
+                order: -1;
+                margin-bottom: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="overlay" class="overlay" onclick="closeSidebar()"></div>
+    <button class="toggle-sidebar-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+
+    <div id="sidebar" class="sidebar">
+        <div class="profile-section">
+            <div class="profile-avatar" id="profileInitial">م</div>
+            <div id="profileName" class="font-bold text-md">جاري التحميل...</div>
+            <div id="profileRole" class="text-xs text-white/80 mt-1">مدير إدارة</div>
+        </div>
+        <nav>
+            <a href="#" class="active" onclick="return false;"><i class="fas fa-tachometer-alt ml-2"></i> طلبات الموافقة</a>
+            <button onclick="logout()"><i class="fas fa-sign-out-alt ml-2"></i> تسجيل خروج</button>
+        </nav>
+        <div class="absolute bottom-0 w-full p-3 text-center text-white/60 text-xs border-t border-white/20">
+            <p>الإدارة الهندسية - برنامج المشتريات © 2026</p>
+        </div>
+    </div>
+
+    <div class="main-content" id="mainContent">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+            <h1 class="text-lg font-bold text-green-700">📋 طلبات انتظار الموافقة</h1>
+            <button onclick="takeScreenshot()" class="screenshot-btn"><i class="fas fa-camera"></i> لقطة شاشة</button>
+        </div>
+
+        <div id="errorMessage" class="message error"></div>
+        <div id="successMessage" class="message success"></div>
+
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-icon"><i class="fas fa-hourglass-half"></i></div><div class="stat-info"><div class="stat-label">ON Request</div><div class="stat-value" id="onRequestCount">0</div></div></div>
+            <div class="stat-card"><div class="stat-icon"><i class="fas fa-check-circle"></i></div><div class="stat-info"><div class="stat-label">Department Approved</div><div class="stat-value" id="deptApprovedCount">0</div></div></div>
+            <div class="stat-card"><div class="stat-icon"><i class="fas fa-database"></i></div><div class="stat-info"><div class="stat-label">إجمالي في قاعدة البيانات</div><div class="stat-value" id="totalCount">0</div></div></div>
+        </div>
+
+        <div class="toolbar">
+            <input type="text" id="searchInput" placeholder="🔍 بحث في رقم الطلب، الصنف، كود الصنف، مقدم الطلب..." class="search-input">
+            
+            <div class="bulk-actions">
+                <span class="selected-count">المحدد: <span id="selectedCountText">0</span> طلب</span>
+                <button class="select-all-btn" onclick="toggleSelectAll()">✓ تحديد الكل</button>
+                <button class="bulk-btn bulk-approve" onclick="bulkApprove()">
+                    <i class="fas fa-check"></i> موافقة جماعية
+                </button>
+                <button class="bulk-btn bulk-reject" onclick="bulkReject()">
+                    <i class="fas fa-times"></i> رفض جماعي
+                </button>
+            </div>
+            
+            <div class="filters-row">
+                <div class="filter-group">
+                    <label><i class="fas fa-tag"></i> حالة الطلب</label>
+                    <select id="statusFilter">
+                        <option value="all">جميع الحالات</option>
+                        <option value="ON Request">ON Request (قيد المراجعة)</option>
+                        <option value="Department Approved">موافقة قسم</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label><i class="fas fa-layer-group"></i> المجموعة</label>
+                    <select id="groupFilter">
+                        <option value="all">جميع المجموعات</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-wrapper" id="screenshotArea">
+            <table class="data-table" id="dataTable">
+                <thead>
+                    <tr>
+                        <th class="checkbox-col"><input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAll()"></th>
+                        <th data-sort="id">معرف الطلب <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                        <th data-sort="date">التاريخ <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                        <th data-sort="request">الطلب <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                        <th data-sort="code">كود الصنف <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                        <th data-sort="quantity">الكمية <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                        <th data-sort="stock">الرصيد <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                        <th data-sort="person">مقدم الطلب <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                        <th>الحالة</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody id="requestsTable">
+                    <tr><td colspan="10" class="text-center py-8"><i class="fas fa-spinner fa-spin text-green-600"></i> جاري تحميل البيانات...</td></tr>
+                </tbody>
+            </table>
+            <div class="scroll-hint-mobile"><i class="fas fa-arrows-alt-h"></i> اسحب لليمين لعرض جميع الأعمدة</div>
+        </div>
+        
+        <div class="pagination-container">
+            <div class="records-summary" id="recordsSummary">عرض 0 من 0 سجل</div>
+            <div class="pagination-controls">
+                <button class="pagination-btn" id="firstPageBtn" onclick="goToPage(1)" disabled><i class="fas fa-angle-double-right"></i> الأولى</button>
+                <button class="pagination-btn" id="prevPageBtn" onclick="prevPage()" disabled><i class="fas fa-angle-right"></i> السابق</button>
+                <span class="page-info" id="pageInfo">الصفحة 1</span>
+                <button class="pagination-btn" id="nextPageBtn" onclick="nextPage()" disabled>التالي <i class="fas fa-angle-left"></i></button>
+                <button class="pagination-btn" id="lastPageBtn" onclick="goToLastPage()" disabled>الأخيرة <i class="fas fa-angle-double-left"></i></button>
+                <select id="pageSizeSelect" class="page-size-select" onchange="changePageSize()">
+                    <option value="10">10 لكل صفحة</option>
+                    <option value="25">25 لكل صفحة</option>
+                    <option value="50">50 لكل صفحة</option>
+                    <option value="100">100 لكل صفحة</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="footer">آخر تحديث: <span id="lastUpdateTime">—</span></div>
+    </div>
+
+    <div id="detailsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid #e2e8f0;">
+                <h2 class="modal-title" style="font-size: 15px; font-weight: bold; color: #2f855a;">📋 تفاصيل الطلب</h2>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button onclick="takeDetailScreenshot()" class="screenshot-btn-detail" style="background: #2f855a; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 5px;">
+                        <i class="fas fa-camera"></i> لقطة شاشة
+                    </button>
+                    <button onclick="closeModal('detailsModal')" class="close-btn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #718096; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: all 0.2s;">
+                        ✕
+                    </button>
+                </div>
+            </div>
+            <div id="modalDetails" class="p-4"></div>
+            <div class="modal-footer" style="padding: 12px 16px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 11px; color: #718096;"></div>
+        </div>
+    </div>
+    
+    <div id="approveModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2 class="modal-title">✅ الموافقة النهائية</h2><button onclick="closeModal('approveModal')" class="close-btn">✕</button></div>
+            <div class="p-4"><p>هل أنت متأكد من الموافقة على هذا الطلب؟</p><div class="flex gap-3 mt-4"><button onclick="confirmApprove()" class="btn-save">نعم، أوافق</button><button onclick="closeModal('approveModal')" class="btn-cancel">إلغاء</button></div></div>
+        </div>
+    </div>
+    
+    <div id="rejectModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2 class="modal-title">❌ رفض الطلب</h2><button onclick="closeModal('rejectModal')" class="close-btn">✕</button></div>
+            <div class="p-4">
+                <textarea id="rejectReason" rows="3" class="w-full p-2 border rounded-lg" placeholder="سبب الرفض (إلزامي)..."></textarea>
+                <div class="flex gap-3 mt-4">
+                    <button onclick="confirmReject()" class="bg-red-600 text-white px-4 py-2 rounded-lg">تأكيد الرفض</button>
+                    <button onclick="closeModal('rejectModal')" class="btn-cancel">إلغاء</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabase.js"></script>
+    <script>
+        const supabaseClient = window.AppSupabase || window.supabase;
+        let currentUser = null, allRequests = [], stockCache = [], groupsList = [], allRequestsHistory = [];
+        let selectedRequestId = null;
+        let currentSearch = '', currentGroup = 'all', currentStatusFilter = 'all';
+        let currentSort = { column: 'id', direction: 'desc' };
+        let selectedRequests = new Set();
+        let currentPage = 1;
+        let pageSize = 10;
+        let filteredRequests = [];
+
+        function formatDate(d) { 
+            if (!d) return '—'; 
+            if (d.match(/^\d{2}\/\d{2}\/\d{4}$/)) return d; 
+            try { 
+                let date = new Date(d); 
+                if (isNaN(date)) return d; 
+                return `${String(date.getDate()).padStart(2,'0')}/${String(date.getMonth()+1).padStart(2,'0')}/${date.getFullYear()}`; 
+            } catch(e){ return d; } 
+        }
+        
+        function getStock(itemName, code) {
+            if (!stockCache.length) return { exists: false, qty: 0 };
+            let found = stockCache.find(s => s.description && itemName && s.description.toLowerCase().includes(itemName.toLowerCase()));
+            if (!found && code && code !== 'New Code') found = stockCache.find(s => s.item_no && s.item_no.toLowerCase().includes(code.toLowerCase()));
+            return found ? { exists: true, qty: found.total_qty || 0 } : { exists: false, qty: 0 };
+        }
+
+        function getStatusBadge(status) {
+            if (status === 'ON Request') return '<span class="status-badge status-onrequest"><i class="fas fa-clock"></i> قيد المراجعة</span>';
+            if (status === 'Department Approved') return '<span class="status-badge status-dept-approved"><i class="fas fa-check-circle"></i> موافقة قسم</span>';
+            if (status === 'Manager Done') return '<span class="status-badge status-manager-done"><i class="fas fa-check-double"></i> موافقة نهائية</span>';
+            return `<span class="status-badge">${status || '—'}</span>`;
+        }
+
+        function updateSelectedCount() {
+            const currentPageCheckboxes = document.querySelectorAll('#requestsTable .request-checkbox');
+            let count = 0;
+            currentPageCheckboxes.forEach(cb => { if (cb.checked) count++; });
+            document.getElementById('selectedCountText').textContent = count;
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            if (selectAllCheckbox) {
+                const visibleCount = currentPageCheckboxes.length;
+                selectAllCheckbox.checked = count > 0 && count === visibleCount;
+                selectAllCheckbox.indeterminate = count > 0 && count < visibleCount;
+            }
+        }
+
+        function toggleSelectAll() {
+            const checkboxes = document.querySelectorAll('#requestsTable .request-checkbox');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => {
+                cb.checked = !allChecked;
+                const id = parseInt(cb.getAttribute('data-id'));
+                if (!allChecked) selectedRequests.add(id);
+                else selectedRequests.delete(id);
+            });
+            updateSelectedCount();
+        }
+
+        function toggleRequestCheckbox(id, checked) {
+            if (checked) selectedRequests.add(id);
+            else selectedRequests.delete(id);
+            updateSelectedCount();
+        }
+
+        async function bulkApprove() {
+            if (selectedRequests.size === 0) { Swal.fire('تنبيه', 'الرجاء تحديد الطلبات', 'warning'); return; }
+            const ids = Array.from(selectedRequests);
+            const result = await Swal.fire({ title: 'تأكيد الموافقة', text: `سيتم الموافقة على ${ids.length} طلب`, icon: 'question', showCancelButton: true });
+            if (!result.isConfirmed) return;
+            Swal.fire({ title: 'جاري المعالجة...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+            try {
+                const { error } = await supabaseClient.from('الطلبات').update({ Status: 'Manager Done', approval_level: 'completed', general_manager_approved_by: currentUser.id, general_manager_approved_at: new Date().toISOString() }).in('id', ids);
+                if (error) throw error;
+                Swal.fire('✅ تمت الموافقة', `تمت الموافقة على ${ids.length} طلب`, 'success');
+                selectedRequests.clear();
+                await loadData();
+            } catch(e) { Swal.fire('خطأ', e.message, 'error'); }
+        }
+
+        async function bulkReject() {
+            if (selectedRequests.size === 0) { Swal.fire('تنبيه', 'الرجاء تحديد الطلبات', 'warning'); return; }
+            const { value: reason } = await Swal.fire({ title: 'سبب الرفض', input: 'textarea', inputPlaceholder: 'اكتب سبب الرفض...', showCancelButton: true });
+            if (!reason) return;
+            const ids = Array.from(selectedRequests);
+            Swal.fire({ title: 'جاري المعالجة...', didOpen: () => { Swal.showLoading(); } });
+            try {
+                const { error } = await supabaseClient.from('الطلبات').update({ Status: 'Reject', approval_level: 'rejected', general_manager_approved_by: currentUser.id, general_manager_approved_at: new Date().toISOString(), 'Notes Reject': reason }).in('id', ids);
+                if (error) throw error;
+                Swal.fire('❌ تم الرفض', `تم رفض ${ids.length} طلب`, 'success');
+                selectedRequests.clear();
+                await loadData();
+            } catch(e) { Swal.fire('خطأ', e.message, 'error'); }
+        }
+
+        function updateSortIcons() {
+            document.querySelectorAll('.data-table th').forEach(th => {
+                const iconSpan = th.querySelector('.sort-icon i');
+                const sortBy = th.getAttribute('data-sort');
+                if (iconSpan && sortBy) {
+                    if (currentSort.column === sortBy) {
+                        iconSpan.className = currentSort.direction === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down';
+                        th.querySelector('.sort-icon').classList.add('active');
+                    } else {
+                        iconSpan.className = 'fas fa-sort';
+                        th.querySelector('.sort-icon').classList.remove('active');
+                    }
+                }
+            });
+        }
+
+        function sortData(data, column, direction) {
+            return [...data].sort((a, b) => {
+                let valA, valB;
+                switch(column) {
+                    case 'id': valA = a.id; valB = b.id; break;
+                    case 'date': valA = a['Request Date']; valB = b['Request Date']; break;
+                    case 'request': valA = a.Request || ''; valB = b.Request || ''; break;
+                    case 'code': valA = a.code || ''; valB = b.code || ''; break;
+                    case 'quantity': valA = a.Quantity || 0; valB = b.Quantity || 0; break;
+                    case 'stock': valA = getStock(a.Request, a.code).qty; valB = getStock(b.Request, b.code).qty; break;
+                    case 'person': valA = a['Requesting person'] || ''; valB = b['Requesting person'] || ''; break;
+                    default: valA = a.id; valB = b.id;
+                }
+                if (direction === 'asc') return valA > valB ? 1 : -1;
+                return valA < valB ? 1 : -1;
+            });
+        }
+
+        function applyFiltersAndSort() {
+            let filtered = [...allRequests];
+            if (currentStatusFilter !== 'all') filtered = filtered.filter(r => r.Status === currentStatusFilter);
+            if (currentGroup !== 'all') filtered = filtered.filter(r => r.group_id == currentGroup);
+            if (currentSearch) {
+                let s = currentSearch.toLowerCase();
+                filtered = filtered.filter(r => (r.id?.toString().includes(s)) || (r.Request?.toLowerCase().includes(s)) || (r.code?.toLowerCase().includes(s)) || (r['Requesting person']?.toLowerCase().includes(s)));
+            }
+            filtered = sortData(filtered, currentSort.column, currentSort.direction);
+            return filtered;
+        }
+
+        function renderTable() {
+            filteredRequests = applyFiltersAndSort();
+            const totalRecords = filteredRequests.length;
+            const totalPages = Math.ceil(totalRecords / pageSize);
+            if (currentPage > totalPages && totalPages > 0) currentPage = totalPages;
+            if (currentPage < 1) currentPage = 1;
+            const startIndex = (currentPage - 1) * pageSize;
+            const endIndex = Math.min(startIndex + pageSize, totalRecords);
+            const pageData = filteredRequests.slice(startIndex, endIndex);
+            document.getElementById('recordsSummary').innerHTML = `📊 عرض <strong>${startIndex + 1}-${endIndex}</strong> من <strong>${totalRecords}</strong> سجل`;
+            document.getElementById('pageInfo').innerHTML = `الصفحة ${currentPage} من ${totalPages || 1}`;
+            document.getElementById('firstPageBtn').disabled = currentPage === 1 || totalRecords === 0;
+            document.getElementById('prevPageBtn').disabled = currentPage === 1 || totalRecords === 0;
+            document.getElementById('nextPageBtn').disabled = currentPage === totalPages || totalRecords === 0;
+            document.getElementById('lastPageBtn').disabled = currentPage === totalPages || totalRecords === 0;
+            let tbody = document.getElementById('requestsTable');
+            if (!pageData.length) { tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-gray-500">📭 لا توجد طلبات</td></tr>'; updateSelectedCount(); return; }
+            let html = '';
+            pageData.forEach((req) => {
+                let stock = getStock(req.Request, req.code);
+                let stockHtml = !stock.exists ? '<span class="stock-value stock-zero">0</span>' : `<span class="stock-value ${stock.qty === 0 ? 'stock-zero' : (stock.qty < (req.Quantity||0) ? 'stock-low' : 'stock-high')}">${stock.qty}</span>`;
+                const isChecked = selectedRequests.has(req.id);
+                html += `<tr onclick="event.stopPropagation(); viewRequest(${req.id})" style="cursor:pointer">
+                    <td class="checkbox-col text-center" onclick="event.stopPropagation()"><input type="checkbox" class="request-checkbox" data-id="${req.id}" ${isChecked ? 'checked' : ''} onclick="event.stopPropagation(); toggleRequestCheckbox(${req.id}, this.checked)"></td>
+                    <td class="text-center" style="font-family: monospace;">${req.id}</td>
+                    <td class="text-center">${formatDate(req['Request Date'])}</td>
+                    <td class="break-words">${req.Request || '—'}</td>
+                    <td style="font-family: monospace;">${req.code || '—'}</td>
+                    <td class="text-center">${req.Quantity || '—'} ${req.Units || ''}</td>
+                    <td class="text-center">${stockHtml}</td>
+                    <td>${req['Requesting person'] || '—'}</td>
+                    <td class="text-center">${getStatusBadge(req.Status)}</td>
+                    <td class="action-buttons" onclick="event.stopPropagation()">
+                        <button class="action-btn action-approve" onclick="openApproveModal(${req.id})">قبول</button>
+                        <button class="action-btn action-reject" onclick="openRejectModal(${req.id})">رفض</button>
+                    </td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+            updateSortIcons();
+            updateSelectedCount();
+        }
+
+        function goToPage(page) { const totalPages = Math.ceil(filteredRequests.length / pageSize); if (page >= 1 && page <= totalPages) { currentPage = page; renderTable(); } }
+        function prevPage() { if (currentPage > 1) { currentPage--; renderTable(); } }
+        function nextPage() { const totalPages = Math.ceil(filteredRequests.length / pageSize); if (currentPage < totalPages) { currentPage++; renderTable(); } }
+        function goToLastPage() { const totalPages = Math.ceil(filteredRequests.length / pageSize); currentPage = totalPages; renderTable(); }
+        function changePageSize() { pageSize = parseInt(document.getElementById('pageSizeSelect').value); currentPage = 1; renderTable(); }
+        function handleSort(column) { if (currentSort.column === column) currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc'; else { currentSort.column = column; currentSort.direction = 'asc'; } currentPage = 1; renderTable(); }
+
+        async function loadUserProfile() {
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (!user) { window.location.href = 'index.html'; return; }
+                const { data: u } = await supabaseClient.from('users').select('*').eq('id', user.id).single();
+                if (u) {
+                    currentUser = u;
+                    if (u.role !== 'general_manager' && u.role !== 'admin') { Swal.fire('صلاحية غير كافية', '', 'error'); window.location.href = 'user-dashboard.html'; return; }
+                    document.getElementById('profileName').textContent = u.full_name || u.username;
+                    document.getElementById('profileInitial').textContent = (u.full_name || u.username).charAt(0);
+                }
+                await loadData();
+            } catch(e) { console.error(e); showError('خطأ في تحميل المستخدم'); }
+        }
+
+        async function loadData() {
+            try {
+                const { data: requests, error: reqError } = await supabaseClient.from('الطلبات').select('*').in('Status', ['ON Request', 'Department Approved']).order('created_at', { ascending: false });
+                if (reqError) throw reqError;
+                allRequests = requests || [];
+                const { data: history, error: historyError } = await supabaseClient.from('الطلبات').select('*').order('created_at', { ascending: false });
+                if (!historyError) allRequestsHistory = history || [];
+                const { data: stock, error: stockError } = await supabaseClient.from('combined_data').select('description, item_no, total_qty');
+                if (!stockError) stockCache = stock || [];
+                const { data: groups, error: groupsError } = await supabaseClient.from('groups').select('id, name').order('name');
+                if (!groupsError) groupsList = groups || [];
+                updateGroupFilter();
+                updateStats();
+                currentPage = 1;
+                renderTable();
+                document.getElementById('lastUpdateTime').textContent = new Date().toLocaleString('ar-EG');
+            } catch(e) { console.error(e); showError('خطأ في تحميل البيانات: ' + e.message); }
+        }
+
+        function updateGroupFilter() {
+            let uniqueGroups = [...new Set(allRequests.map(r => r.group_id).filter(g => g != null))];
+            let groupSelect = document.getElementById('groupFilter');
+            groupSelect.innerHTML = '<option value="all">جميع المجموعات</option>';
+            for (let groupId of uniqueGroups) {
+                let group = groupsList.find(g => g.id == groupId);
+                if (group) groupSelect.innerHTML += `<option value="${groupId}">${group.name}</option>`;
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('onRequestCount').textContent = allRequests.filter(r => r.Status === 'ON Request').length;
+            document.getElementById('deptApprovedCount').textContent = allRequests.filter(r => r.Status === 'Department Approved').length;
+            document.getElementById('totalCount').textContent = allRequests.length;
+        }
+
+        // عرض الطلبات السابقة لنفس كود الصنف
+        async function loadPreviousRequests(code, currentId) {
+            if (!code || code === 'New Code' || code === '—') return [];
+            const { data, error } = await supabaseClient.from('الطلبات').select('*').eq('code', code).order('created_at', { ascending: false });
+            if (error) return [];
+            return data.filter(r => r.id !== currentId);
+        }
+
+        async function viewRequest(id) {
+            let req = allRequests.find(r => r.id === id);
+            if (!req) return;
+            let stock = getStock(req.Request, req.code);
+            let groupName = groupsList.find(g => g.id == req.group_id)?.name || '—';
+            
+            // جلب الطلبات السابقة لنفس كود الصنف
+            let previousRequests = [];
+            if (req.code && req.code !== 'New Code') {
+                previousRequests = await loadPreviousRequests(req.code, req.id);
+            }
+            
+            let previousRequestsHtml = '';
+            if (previousRequests.length > 0) {
+                let historyItems = '';
+                previousRequests.forEach(prev => {
+                    let statusClass = '';
+                    if (prev.Status === 'Manager Done') statusClass = 'status-manager-done';
+                    else if (prev.Status === 'Department Approved') statusClass = 'status-dept-approved';
+                    else if (prev.Status === 'ON Request') statusClass = 'status-onrequest';
+                    else statusClass = '';
+                    historyItems += `
+                        <div class="request-history-item">
+                            <div class="history-date">${formatDate(prev['Request Date'])}</div>
+                            <div class="history-request" title="${prev.Request || '—'}">${prev.Request?.substring(0, 40) || '—'}${prev.Request?.length > 40 ? '...' : ''}</div>
+                            <div class="history-quantity">${prev.Quantity || '—'} ${prev.Units || ''}</div>
+                            <div class="history-person">${prev['Requesting person'] || '—'}</div>
+                            <div class="history-status">${getStatusBadge(prev.Status)}</div>
+                        </div>
+                    `;
+                });
+                previousRequestsHtml = `
+                    <div class="previous-requests-container">
+                        <div class="previous-requests-title">
+                            <i class="fas fa-history"></i>
+                            الطلبات السابقة لنفس كود الصنف (${req.code})
+                            <span class="text-xs text-gray-500">(${previousRequests.length} طلب)</span>
+                        </div>
+                        <div class="previous-requests-list">
+                            ${historyItems}
+                        </div>
+                    </div>
+                `;
+            } else if (req.code && req.code !== 'New Code') {
+                previousRequestsHtml = `
+                    <div class="previous-requests-container">
+                        <div class="previous-requests-title">
+                            <i class="fas fa-history"></i>
+                            الطلبات السابقة لنفس كود الصنف (${req.code})
+                        </div>
+                        <div class="empty-history">
+                            <i class="fas fa-inbox"></i> لا توجد طلبات سابقة لهذا الكود
+                        </div>
+                    </div>
+                `;
+            }
+            
+            let stockHtml = !stock.exists ? 
+                '<div class="bg-yellow-50 p-3 rounded-lg mb-3"><div class="flex justify-start items-center gap-2"><span class="font-bold">الرصيد :</span><span class="text-red-600 font-bold text-lg">0</span></div></div>' : 
+                `<div class="bg-gray-50 p-3 rounded-lg mb-3">
+                    <div class="flex justify-start items-center gap-2">
+                        <span class="font-bold">الرصيد :</span>
+                        <span class="${stock.qty === 0 ? 'text-red-600' : (stock.qty < (req.Quantity||0) ? 'text-orange-600' : 'text-green-600')} font-bold text-lg">${stock.qty}</span>
+                    </div>
+                    ${stock.qty === 0 ? '<div class="text-red-500 text-sm mt-2 text-center">⚠️ غير متوفر</div>' : (stock.qty < (req.Quantity||0) ? '<div class="text-orange-500 text-sm mt-2 text-center">⚠️ رصيد غير كاف</div>' : '<div class="text-green-500 text-sm mt-2 text-center">✅ رصيد كاف</div>')}
+                </div>`;
+            
+            let details = `
+                ${stockHtml}
+                <div class="details-grid">
+                    <div class="detail-item"><div class="detail-label">رقم الطلب</div><div class="detail-value">${req.id}</div></div>
+                    <div class="detail-item"><div class="detail-label">التاريخ</div><div class="detail-value">${formatDate(req['Request Date'])}</div></div>
+                    <div class="detail-item"><div class="detail-label">الصنف</div><div class="detail-value">${req.Request || '—'}</div></div>
+                    <div class="detail-item"><div class="detail-label">كود الصنف</div><div class="detail-value">${req.code || '—'}</div></div>
+                    <div class="detail-item"><div class="detail-label">الكمية المطلوبة</div><div class="detail-value">${req.Quantity || '—'} ${req.Units || ''}</div></div>
+                    <div class="detail-item"><div class="detail-label">الوحدة</div><div class="detail-value">${req.Units || '—'}</div></div>
+                    <div class="detail-item"><div class="detail-label">مقدم الطلب</div><div class="detail-value">${req['Requesting person'] || '—'}</div></div>
+                    <div class="detail-item"><div class="detail-label">الماكينة</div><div class="detail-value">${req.Machine || '—'}</div></div>
+                    <div class="detail-item"><div class="detail-label">المبنى</div><div class="detail-value">${req.Building || '—'}</div></div>
+                    <div class="detail-item"><div class="detail-label">المجموعة</div><div class="detail-value">${groupName}</div></div>
+                    <div class="detail-item"><div class="detail-label">الحالة الحالية</div><div class="detail-value">${getStatusBadge(req.Status)}</div></div>
+                </div>
+                ${previousRequestsHtml}
+            `;
+            document.getElementById('modalDetails').innerHTML = details;
+            document.getElementById('detailsModal').classList.add('open');
+        }
+
+        function openApproveModal(id) { selectedRequestId = id; document.getElementById('approveModal').classList.add('open'); }
+        async function confirmApprove() {
+            try { 
+                await supabaseClient.from('الطلبات').update({ Status: 'Manager Done', approval_level: 'completed', general_manager_approved_by: currentUser.id, general_manager_approved_at: new Date().toISOString() }).eq('id', selectedRequestId); 
+                showSuccess('✅ تمت الموافقة النهائية'); 
+                selectedRequests.delete(selectedRequestId);
+                closeModal('approveModal'); 
+                await loadData(); 
+            } catch(e) { showError(e.message); } 
+        }
+        
+        function openRejectModal(id) { selectedRequestId = id; document.getElementById('rejectModal').classList.add('open'); document.getElementById('rejectReason').value = ''; }
+        async function confirmReject() {
+            let reason = document.getElementById('rejectReason').value.trim();
+            if (!reason) { showError('الرجاء كتابة سبب الرفض'); return; }
+            try { 
+                await supabaseClient.from('الطلبات').update({ Status: 'Reject', approval_level: 'rejected', general_manager_approved_by: currentUser.id, general_manager_approved_at: new Date().toISOString(), 'Notes Reject': reason }).eq('id', selectedRequestId); 
+                showSuccess('❌ تم رفض الطلب'); 
+                selectedRequests.delete(selectedRequestId);
+                closeModal('rejectModal'); 
+                await loadData(); 
+            } catch(e) { showError(e.message); } 
+        }
+        
+        function closeModal(id) { document.getElementById(id).classList.remove('open'); selectedRequestId = null; }
+        function showError(m) { let d = document.getElementById('errorMessage'); d.textContent = m; d.style.display = 'block'; setTimeout(() => d.style.display = 'none', 3000); }
+        function showSuccess(m) { let d = document.getElementById('successMessage'); d.textContent = m; d.style.display = 'block'; setTimeout(() => d.style.display = 'none', 3000); }
+        async function logout() { await supabaseClient.auth.signOut(); window.location.href = 'index.html'; }
+        
+        async function takeDetailScreenshot() {
+            const modalContent = document.querySelector('#detailsModal .modal-content');
+            if (!modalContent) { showError('لم يتم العثور على محتوى المودال'); return; }
+            const header = modalContent.querySelector('.modal-header');
+            const footer = modalContent.querySelector('.modal-footer');
+            const closeBtn = modalContent.querySelector('.close-btn');
+            const screenshotBtn = modalContent.querySelector('.screenshot-btn-detail');
+            if (header) header.style.visibility = 'hidden';
+            if (footer) footer.style.visibility = 'hidden';
+            if (closeBtn) closeBtn.style.visibility = 'hidden';
+            if (screenshotBtn) screenshotBtn.style.visibility = 'hidden';
+            try {
+                const canvas = await html2canvas(modalContent, { scale: 2, backgroundColor: '#ffffff' });
+                const link = document.createElement('a');
+                link.download = `request-details-${new Date().toISOString().slice(0, 19)}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+                showSuccess('📸 تم حفظ لقطة الشاشة');
+            } catch (error) { showError('حدث خطأ أثناء التقاط الشاشة'); }
+            finally {
+                if (header) header.style.visibility = 'visible';
+                if (footer) footer.style.visibility = 'visible';
+                if (closeBtn) closeBtn.style.visibility = 'visible';
+                if (screenshotBtn) screenshotBtn.style.visibility = 'visible';
+            }
+        }
+        
+        async function takeScreenshot() {
+            const element = document.getElementById('screenshotArea');
+            try {
+                const canvas = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff' });
+                const link = document.createElement('a');
+                link.download = `requests-${new Date().toISOString().slice(0, 10)}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+                showSuccess('📸 تم حفظ لقطة الشاشة');
+            } catch (error) { showError('حدث خطأ أثناء التقاط الشاشة'); }
+        }
+        
+        function toggleSidebar() { 
+            let s = document.getElementById('sidebar'), m = document.getElementById('mainContent'), o = document.getElementById('overlay'); 
+            if (window.innerWidth <= 768) { s.classList.toggle('mobile-open'); o.classList.toggle('active'); } 
+            else { s.classList.toggle('collapsed'); m.classList.toggle('expanded'); } 
+        }
+        function closeSidebar() { document.getElementById('sidebar').classList.remove('mobile-open'); document.getElementById('overlay').classList.remove('active'); }
+        
+        document.getElementById('searchInput').addEventListener('input', (e) => { currentSearch = e.target.value; currentPage = 1; renderTable(); });
+        document.getElementById('groupFilter').addEventListener('change', (e) => { currentGroup = e.target.value; currentPage = 1; renderTable(); });
+        document.getElementById('statusFilter').addEventListener('change', (e) => { currentStatusFilter = e.target.value; currentPage = 1; renderTable(); });
+        document.querySelectorAll('.data-table th').forEach(th => { th.addEventListener('click', (e) => { if (e.target.closest('.action-btn') || e.target.closest('.checkbox-col')) return; const sortBy = th.getAttribute('data-sort'); if (sortBy) handleSort(sortBy); }); });
+        document.addEventListener('click', function(e) { let s = document.getElementById('sidebar'), t = document.querySelector('.toggle-sidebar-btn'); if (window.innerWidth <= 768 && s.classList.contains('mobile-open') && !s.contains(e.target) && !t.contains(e.target)) closeSidebar(); });
+        window.addEventListener('resize', () => { if (window.innerWidth > 768) { document.getElementById('sidebar').classList.remove('mobile-open'); document.getElementById('overlay').classList.remove('active'); } });
+        document.addEventListener('DOMContentLoaded', () => { loadUserProfile(); });
+        
+        window.takeScreenshot = takeScreenshot;
+        window.toggleSelectAll = toggleSelectAll;
+        window.bulkApprove = bulkApprove;
+        window.bulkReject = bulkReject;
+        window.toggleRequestCheckbox = toggleRequestCheckbox;
+        window.takeDetailScreenshot = takeDetailScreenshot;
+        window.openApproveModal = openApproveModal;
+        window.openRejectModal = openRejectModal;
+        window.confirmApprove = confirmApprove;
+        window.confirmReject = confirmReject;
+        window.viewRequest = viewRequest;
+        window.closeModal = closeModal;
+        window.logout = logout;
+        window.toggleSidebar = toggleSidebar;
+        window.closeSidebar = closeSidebar;
+        window.goToPage = goToPage;
+        window.prevPage = prevPage;
+        window.nextPage = nextPage;
+        window.goToLastPage = goToLastPage;
+        window.changePageSize = changePageSize;
+    </script>
+</body>
+</html>
